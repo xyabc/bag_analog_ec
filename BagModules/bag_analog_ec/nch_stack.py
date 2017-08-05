@@ -43,10 +43,14 @@ class bag_analog_ec__nch_stack(Module):
     Fill in high level description here.
     """
 
+    param_list = ['w', 'l', 'seg', 'intent', 'stack']
+
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
         Module.__init__(self, bag_config, yaml_file, parent=parent, prj=prj, **kwargs)
+        for par in self.param_list:
+            self.parameters[par] = None
 
-    def design(self):
+    def design(self, w=4, l=16e-9, seg=10, intent='standard', stack=1):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
@@ -62,7 +66,32 @@ class bag_analog_ec__nch_stack(Module):
         restore_instance()
         array_instance()
         """
-        pass
+        local_dict = locals()
+        for par in self.param_list:
+            if par not in local_dict:
+                raise Exception('Parameter %s not defined' % par)
+            self.parameters[par] = local_dict[par]
+
+        if seg == 1:
+            raise ValueError('Cannot make 1 finger transistor.')
+
+        inst_name = 'XN'
+
+        # array instances
+        name_list = []
+        term_list = []
+        # add stack transistors
+        for idx in range(stack):
+            name_list.append('%s%d<%d:0>' % (inst_name, idx, seg - 1))
+            cur_term = {}
+            if idx != stack - 1:
+                cur_term['S'] = 'mid%d<%d:0>' % (idx, seg - 1)
+            if idx != 0:
+                cur_term['D'] = 'mid%d<%d:0>' % (idx - 1, seg - 1)
+            term_list.append(cur_term)
+
+        self.array_instance(inst_name, name_list, term_list=term_list, same=True)
+        self.instances[inst_name][0].design(w=w, l=l, nf=1, intent=intent)
 
     def get_layout_params(self, **kwargs):
         """Returns a dictionary with layout parameters.

@@ -43,26 +43,72 @@ class bag_analog_ec__diffamp_diode_pfb(Module):
     Fill in high level description here.
     """
 
+    param_list = ['lch', 'w_dict', 'th_dict', 'seg_dict', 'stack_dict', 'dum_dict']
+
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
         Module.__init__(self, bag_config, yaml_file, parent=parent, prj=prj, **kwargs)
+        for par in self.param_list:
+            self.parameters[par] = None
 
-    def design(self):
-        """To be overridden by subclasses to design this module.
-
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
-
-        To modify schematic structure, call:
-
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
+    def design(self, lch=90e-9, w_dict=None, th_dict=None, seg_dict=None, stack_dict=None,
+               dum_dict=None):
+        """Design the differential amplifier with diode/positive-feedback load.
         """
-        pass
+        local_dict = locals()
+        for par in self.param_list:
+            if par not in local_dict:
+                raise Exception('Parameter %s not defined' % par)
+            self.parameters[par] = local_dict[par]
+
+        # desig dummies
+        w_tail = w_dict['tail']
+        w_in = w_dict['in']
+        w_load = w_dict['load']
+        th_tail = th_dict['tail']
+        th_in = th_dict['in']
+        th_load = th_dict['load']
+        ndum_tail = dum_dict['tail']
+        ndum_in = dum_dict['in']
+        ndum_load = dum_dict['load']
+        pdum_list = []
+        if ndum_tail > 0:
+            pdum_list.append((w_tail, th_tail, ndum_tail))
+        if ndum_in > 0:
+            pdum_list.append((w_in, th_in, ndum_in))
+
+        # array pmos dummies and design
+        self.array_instance('XPD', ['XPDD%s' % idx for idx in range(len(pdum_list))])
+        for inst, (w_cur, th_cur, ndum_cur) in zip(self.instances['XPD'], pdum_list):
+            inst.design(w=w_cur, l=lch, intent=th_cur, nf=ndum_cur)
+
+        # design rest of the dummies
+        for name in ('XPD1', 'XPD2', 'XPD3'):
+            self.instances[name].design(w=w_in, l=lch, intent=th_in, nf=2)
+        for name in ('XND1', 'XND2'):
+            self.instances[name].design(w=w_load, l=lch, intent=th_load, nf=2)
+        self.instances['XND'].design(w=w_load, l=lch, intent=th_load, nf=ndum_load)
+
+        # design main transistors
+        seg_tail = seg_dict['tail']
+        seg_in = seg_dict['in']
+        seg_ref = seg_dict['ref']
+        seg_diode = seg_dict['diode']
+        seg_ngm = seg_dict['ngm']
+
+        stack_tail = stack_dict['tail']
+        stack_in = stack_dict['in']
+        stack_diode = stack_dict['diode']
+        stack_ngm = stack_dict['ngm']
+
+        self.instances['XTAIL'].design(w=w_tail, l=lch, seg=seg_tail * 2, intent=th_tail, stack=stack_tail)
+        self.instances['XREF'].design(w=w_tail, l=lch, seg=seg_ref, intent=th_tail, stack=stack_tail)
+        self.instances['XINL'].design(w=w_in, l=lch, seg=seg_in, intent=th_in, stack=stack_in)
+        self.instances['XINR'].design(w=w_in, l=lch, seg=seg_in, intent=th_in, stack=stack_in)
+        self.instances['XRES'].design(w=w_in, l=lch, seg=seg_ref, intent=th_in, stack=stack_in)
+        self.instances['XDIOL'].design(w=w_load, l=lch, seg=seg_diode, intent=th_load, stack=stack_diode)
+        self.instances['XDIOR'].design(w=w_load, l=lch, seg=seg_diode, intent=th_load, stack=stack_diode)
+        self.instances['XNGML'].design(w=w_load, l=lch, seg=seg_ngm, intent=th_load, stack=stack_ngm)
+        self.instances['XNGMR'].design(w=w_load, l=lch, seg=seg_ngm, intent=th_load, stack=stack_ngm)
 
     def get_layout_params(self, **kwargs):
         """Returns a dictionary with layout parameters.
