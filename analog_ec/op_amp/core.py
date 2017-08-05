@@ -10,7 +10,7 @@ from builtins import *
 from typing import Dict, Any, Set
 
 from bag.layout.template import TemplateDB
-from bag.layout.routing import TrackManager
+from bag.layout.routing import TrackID, TrackManager
 
 from abs_templates_ec.analog_core import AnalogBase
 
@@ -125,11 +125,12 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         tr_manager = TrackManager(self.grid, tr_widths, tr_spaces)
         pg_tracks, pds_tracks, ng_tracks = [], [], []
         hm_layer = self.get_mos_conn_layer(self.grid.tech_info) + 1
+        vm_layer = hm_layer + 1
 
         # allocate tracks for outputs
         offset = tr_manager.get_space(hm_layer, ('bias', 'out'))
-        num_pg, pg_loc = tr_manager.place_wires(hm_layer, ['out', 'out'], start_idx=offset)
-        ng_tracks.append(offset + num_pg)
+        num_ng, ng_loc = tr_manager.place_wires(hm_layer, ['out', 'out'], start_idx=offset)
+        ng_tracks.append(offset + num_ng)
         nds_tracks = [0]
         # allocate tracks for gm tail + bias
         offset = tr_manager.get_space(hm_layer, ('in', 'tail'))
@@ -166,8 +167,58 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         biasm = self.draw_mos_conn('pch', 1, ndum + fg_single + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
         biasr = self.draw_mos_conn('pch', 1, col_right, fg_tail, 2, 0, stack=stack_tail)
 
+        # draw connections
+        # connect VDD/VSS
+        self.connect_to_substrate('ntap', [biasl['s'], biasm['s'], biasr['s']])
+        self.connect_to_substrate('ptap', [diodel['d'], ngml['d'], ngmr['d'], dioder['d']])
+
+        # connect bias/tail wires
+        w_bias = tr_manager.get_width(hm_layer, 'bias')
+        w_tail = tr_manager.get_width(hm_layer, 'tail')
+        bias1_tid = self.make_track_id('pch', 1, 'g', bias_loc[0], width=w_bias)
+        tail1_tidx = self.get_track_index('pch', 1, 'ds', tail_loc[0])
+        tail2_tidx = self.get_track_index('pch', 0, 'ds', nout_loc[0])
+        bias2_tid = self.make_track_id('pch', 0, 'ds', nout_loc[1], width=w_bias)
+
+        self.connect_differential_tracks([inl['d'], inr['d'], biasl['d'], biasr['d']], [biasm['d'], inm['d']],
+                                         hm_layer, tail2_tidx, tail1_tidx, width=w_tail)
+        bias1 = self.connect_to_tracks([biasl['g'], biasm['g'], biasr['g']], bias1_tid)
+        bias2 = self.connect_to_tracks(inm['s'], bias2_tid)
+        mid_tid = self.grid.coord_to_nearest_track(vm_layer, bias1.middle)
+        bias_vtid = TrackID(vm_layer, mid_tid, width=tr_manager.get_width(vm_layer, 'bias'))
+        bias = self.connect_to_tracks([bias1, bias2], bias_vtid)
+
+        # connect outputs
+        w_out = tr_manager.get_width(hm_layer, 'out')
+        outp_tidx = self.get_track_index('nch', 0, 'g', ng_loc[0])
+        outn_tidx = self.get_track_index('nch', 0, 'g', ng_loc[1])
+        outp_warrs = [inr['s'], ngmr['s'], dioder['s'], dioder['g'], ngml['g']]
+        outn_warrs = [inl['s'], ngml['s'], diodel['s'], diodel['g'], ngmr['g']]
+        outp, outn = self.connect_differential_tracks(outp_warrs, outn_warrs, hm_layer,
+                                                      outp_tidx, outn_tidx, width=w_out)
+
+        # connect inputs
+        w_in = tr_manager.get_width(hm_layer, 'in')
+        inc1_tidx = self.get_track_index('pch', 0, 'g', in_loc[0])
+        inp_tidx = self.get_track_index('pch', 0, 'g', in_loc[1])
+        inn_tidx = self.get_track_index('pch', 0, 'g', in_loc[2])
+        inc2_tidx = self.get_track_index('pch', 0, 'g', in_loc[3])
+        inc1_warrs = inc2_warrs = inm['g']
+        inp_warrs = inl['g']
+        inn_warrs = inr['g']
+        inc1, inp, inn, inc2 = self.connect_matching_tracks([inc1_warrs, inp_warrs, inn_warrs, inc2_warrs],
+                                                            hm_layer, [inc1_tidx, inp_tidx, inn_tidx, inc2_tidx],
+                                                            width=w_in)
+
         # fill dummies
         vss_warrs, vdd_warrs = self.fill_dummy()
 
+        # add pins
+        self.add_pin('ref', [inc1, inc2], show=show_pins)
+        self.add_pin('inp', inp, show=show_pins)
+        self.add_pin('inn', inn, show=show_pins)
+        self.add_pin('bias', bias, show=show_pins)
+        self.add_pin('outp', outp, show=show_pins)
+        self.add_pin('outn', outn, show=show_pins)
         self.add_pin('VSS', vss_warrs, show=show_pins)
         self.add_pin('VDD', vdd_warrs, show=show_pins)
