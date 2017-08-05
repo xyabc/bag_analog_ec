@@ -21,15 +21,29 @@ def make_tdb(prj, target_lib, specs):
 
 def generate(prj, specs):
     impl_lib = specs['impl_lib']
+    cell_name = specs['cell_name']
     params = specs['params']
 
     temp_db = make_tdb(prj, impl_lib, specs)
 
-    name_list = ['DIFFAMP_DIODE_PFB']
-    temp_list = [temp_db.new_template(params=params, temp_cls=DiffAmpDiodeLoadPFB, debug=False)]
+    name_list = [cell_name]
+    template = temp_db.new_template(params=params, temp_cls=DiffAmpDiodeLoadPFB, debug=False)
     print('creating layout')
-    temp_db.batch_layout(prj, temp_list, name_list)
+    temp_db.batch_layout(prj, [template], name_list)
     print('done')
+    return template.sch_params
+
+
+def generate_sch(prj, specs, sch_params):
+    dut_lib = 'bag_analog_ec'
+    dut_cell = 'diffamp_diode_pfb'
+
+    impl_lib = specs['impl_lib']
+    cell_name = specs['cell_name']
+
+    dsn = prj.create_design_module(dut_lib, dut_cell)
+    dsn.design(**sch_params)
+    dsn.implement_design(impl_lib, top_cell_name=cell_name, erase=True)
 
 
 if __name__ == '__main__':
@@ -45,4 +59,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    generate(bprj, block_specs)
+    sch_info = generate(bprj, block_specs)
+    generate_sch(bprj, block_specs, sch_info)

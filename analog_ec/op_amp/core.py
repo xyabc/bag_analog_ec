@@ -36,6 +36,11 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
         super(DiffAmpDiodeLoadPFB, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -112,6 +117,9 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
 
         fg_single = max(fg_in, fg_load)
         fg_tot = 2 * (fg_single + ndum) + 2 * min_fg_sep + fg_ref
+        ndum_tail = fg_tot - 2 * fg_in - fg_ref
+        ndum_in = ndum_tail - 6
+        ndum_load = fg_tot - 2 * fg_load - 4
 
         # get width/threshold/orientation info
         nw_list = [w_dict['load']]
@@ -222,3 +230,13 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         self.add_pin('outn', outn, show=show_pins)
         self.add_pin('VSS', vss_warrs, show=show_pins)
         self.add_pin('VDD', vdd_warrs, show=show_pins)
+
+        # compute schematic parameters
+        self._sch_params = dict(
+            lch=lch,
+            w_dict=w_dict,
+            th_dict=th_dict,
+            seg_dict=seg_dict,
+            stack_dict=stack_dict,
+            dum_dict={'tail': ndum_tail, 'in': ndum_in, 'load': ndum_load},
+        )
