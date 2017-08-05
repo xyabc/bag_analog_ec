@@ -122,7 +122,7 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         p_orientations = ['MX', 'MX']
 
         # get tracks information
-        tr_manager = TrackManager(tr_widths, tr_spaces)
+        tr_manager = TrackManager(self.grid, tr_widths, tr_spaces)
         pg_tracks, pds_tracks, ng_tracks = [], [], []
         hm_layer = self.get_mos_conn_layer(self.grid.tech_info) + 1
 
