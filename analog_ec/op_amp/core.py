@@ -57,11 +57,11 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
             seg_dict='NMOS/PMOS number of segments dictionary.',
             stack_dict='NMOS/PMOS stack parameter dictionary.',
             ndum='Number of left/right dummy fingers.',
+            min_fg_sep='number of fingers that separate transistors.',
+            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable guard ring.',
+            show_pins='True to create pin labels.',
             tr_widths='signal wire width dictionary.',
             tr_spaces='signal wire space dictionary.',
-            show_pins='True to create pin labels.',
-            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable guard ring.',
-            min_fg_sep='number of fingers that separate transistors.'
         )
 
     def draw_layout(self):
@@ -128,7 +128,7 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
 
         # allocate tracks for outputs
         offset = tr_manager.get_space(hm_layer, ('bias', 'out'))
-        num_pg, pg_loc = tr_manager.place_wires(hm_layer, ['outp', 'outn'], start_idx=offset)
+        num_pg, pg_loc = tr_manager.place_wires(hm_layer, ['out', 'out'], start_idx=offset)
         ng_tracks.append(offset + num_pg)
         nds_tracks = [0]
         # allocate tracks for gm tail + bias
@@ -153,12 +153,12 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
                        n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf)
 
         # draw transistors
-        col_right = ndum + fg_single + 2 * min_fg_sep + fg_in
+        col_right = ndum + fg_single + 2 * min_fg_sep + fg_ref
         load_start = ndum + fg_single - fg_load
         diodel = self.draw_mos_conn('nch', 0, load_start, fg_diode, 2, 0, stack=stack_diode)
         ngml = self.draw_mos_conn('nch', 0, load_start + fg_diode, fg_ngm, 2, 0, stack=stack_ngm)
         ngmr = self.draw_mos_conn('nch', 0, col_right, fg_ngm, 2, 0, stack=stack_ngm)
-        diodel = self.draw_mos_conn('nch', 0, col_right + fg_ngm, fg_diode, 2, 0, stack=stack_diode)
+        dioder = self.draw_mos_conn('nch', 0, col_right + fg_ngm, fg_diode, 2, 0, stack=stack_diode)
         inl = self.draw_mos_conn('pch', 0, ndum + fg_single - fg_in, fg_in, 0, 2, stack=stack_in)
         inm = self.draw_mos_conn('pch', 0, ndum + fg_single + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
         inr = self.draw_mos_conn('pch', 0, col_right, fg_in, 0, 2, stack=stack_in)
