@@ -91,6 +91,7 @@ class OpAmpTwoStage(AnalogBase):
         # calculate total number of fingers
         seg_tail1 = seg_dict['tail1']
         seg_tail2 = seg_dict['tail2']
+        seg_tailcm = seg_dict['tailcm']
         seg_in = seg_dict['in']
         seg_ref = seg_dict['ref']
         seg_diode1 = seg_dict['diode1']
@@ -105,14 +106,17 @@ class OpAmpTwoStage(AnalogBase):
 
         fg_tail1 = seg_tail1 * stack_tail
         fg_tail2 = seg_tail2 * stack_tail
+        fg_tailcm = seg_tailcm * stack_tail
         fg_in = seg_in * stack_in
         fg_diode1 = seg_diode1 * stack_diode
         fg_ngm1 = seg_ngm1 * stack_ngm
         fg_diode2 = seg_diode2 * stack_diode
         fg_ngm2 = seg_ngm2 * stack_ngm
+        fg_ref = seg_ref * stack_in
+
         fg_load = fg_diode1 + fg_ngm1
         fg_in2 = fg_diode2 + fg_ngm2
-        fg_ref = seg_ref * stack_in
+        fg_bias2 = fg_tail2 + fg_tailcm
 
         # error checking
         if fg_tail1 != fg_in:
@@ -123,9 +127,9 @@ class OpAmpTwoStage(AnalogBase):
             raise ValueError('one of stack_ngm/stack_in must divide the other.')
 
         fg_single1 = max(fg_in, fg_load)
-        fg_single2 = max(fg_tail2, fg_diode2 + fg_ngm2)
+        fg_single2 = max(fg_bias2, fg_in2)
         fg_tot = 2 * (fg_single1 + fg_single2 + ndum) + 4 * min_fg_sep + fg_ref
-        ndum_tail = fg_tot - 2 * fg_in - 2 * fg_tail2 - fg_ref
+        ndum_tail = fg_tot - 2 * fg_in - 2 * fg_bias2 - fg_ref
         ndum_in = fg_tot - 2 * fg_in - fg_ref - 6
         ndum_load = fg_tot - 2 * fg_load - 2 * fg_in2 - 4
 
@@ -170,49 +174,66 @@ class OpAmpTwoStage(AnalogBase):
                        n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf)
 
         # draw stage1 transistors
-        col_left = ndum + fg_single2 + min_fg_sep
-        col_right = col_left + fg_single1 + 2 * min_fg_sep + fg_ref
-        load_start = col_left + fg_single1 - fg_load
-        diodel = self.draw_mos_conn('nch', 0, load_start, fg_diode1, 2, 0, stack=stack_diode)
-        ngml = self.draw_mos_conn('nch', 0, load_start + fg_diode1, fg_ngm1, 2, 0, stack=stack_ngm)
-        ngmr = self.draw_mos_conn('nch', 0, col_right, fg_ngm1, 2, 0, stack=stack_ngm)
-        dioder = self.draw_mos_conn('nch', 0, col_right + fg_ngm1, fg_diode1, 2, 0, stack=stack_diode)
-        inl = self.draw_mos_conn('pch', 0, col_left + fg_single1 - fg_in, fg_in, 0, 2, stack=stack_in)
-        inm = self.draw_mos_conn('pch', 0, col_left + fg_single1 + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
+        col_left = ndum + fg_single2 + fg_single1 + min_fg_sep
+        col_right = col_left + 2 * min_fg_sep + fg_ref
+        diode1l = self.draw_mos_conn('nch', 0, col_left - fg_load, fg_diode1, 2, 0, stack=stack_diode)
+        ngm1l = self.draw_mos_conn('nch', 0, col_left - fg_ngm1, fg_ngm1, 2, 0, stack=stack_ngm)
+        ngm1r = self.draw_mos_conn('nch', 0, col_right, fg_ngm1, 2, 0, stack=stack_ngm)
+        diode1r = self.draw_mos_conn('nch', 0, col_right + fg_ngm1, fg_diode1, 2, 0, stack=stack_diode)
+        inl = self.draw_mos_conn('pch', 0, col_left - fg_in, fg_in, 0, 2, stack=stack_in)
+        inm = self.draw_mos_conn('pch', 0, col_left + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
         inr = self.draw_mos_conn('pch', 0, col_right, fg_in, 0, 2, stack=stack_in)
-        biasl = self.draw_mos_conn('pch', 1, col_left + fg_single1 - fg_tail1, fg_tail1, 2, 0, stack=stack_tail)
-        biasm = self.draw_mos_conn('pch', 1, col_left + fg_single1 + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
-        biasr = self.draw_mos_conn('pch', 1, col_right, fg_tail1, 2, 0, stack=stack_tail)
+        bias1l = self.draw_mos_conn('pch', 1, col_left - fg_tail1, fg_tail1, 2, 0, stack=stack_tail)
+        biasm = self.draw_mos_conn('pch', 1, col_left + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
+        bias1r = self.draw_mos_conn('pch', 1, col_right, fg_tail1, 2, 0, stack=stack_tail)
+        # draw stage2 transistors
+        col_left = ndum + fg_single2
+        col_right += fg_single1 + min_fg_sep
+        diode2l = self.draw_mos_conn('nch', 0, col_left - fg_in2, fg_diode2, 0, 2, stack=stack_diode)
+        ngm2l = self.draw_mos_conn('nch', 0, col_left - fg_ngm2, fg_ngm2, 0, 2, stack=stack_ngm)
+        ngm2r = self.draw_mos_conn('nch', 0, col_right, fg_ngm2, 0, 2, stack=stack_ngm)
+        diode2r = self.draw_mos_conn('nch', 0, col_right + fg_ngm2, fg_diode2, 0, 2, stack=stack_diode)
+        cm2l = self.draw_mos_conn('pch', 1, col_left - fg_bias2, fg_tailcm, 2, 0, stack=stack_tail)
+        bias2l = self.draw_mos_conn('pch', 1, col_left - fg_tail2, fg_tail2, 2, 0, stack=stack_tail)
+        bias2r = self.draw_mos_conn('pch', 1, col_right, fg_tail2, 2, 0, stack=stack_tail)
+        cm2r = self.draw_mos_conn('pch', 1, col_right + fg_tail2, fg_tailcm, 2, 0, stack=stack_tail)
 
         # draw connections
         # connect VDD/VSS
-        self.connect_to_substrate('ntap', [biasl['s'], biasm['s'], biasr['s']])
-        self.connect_to_substrate('ptap', [diodel['d'], ngml['d'], ngmr['d'], dioder['d']])
+        self.connect_to_substrate('ntap', [bias1l['s'], biasm['s'], bias1r['s'], cm2l['s'], cm2r['s'],
+                                           bias2l['s'], bias2r['s']])
+        self.connect_to_substrate('ptap', [diode1l['d'], ngm1l['d'], ngm1r['d'], diode1r['d'],
+                                           diode2l['s'], ngm2l['s'], ngm2r['s'], diode2r['s']])
 
         # connect bias/tail wires
         w_bias = tr_manager.get_width(hm_layer, 'bias')
         w_tail = tr_manager.get_width(hm_layer, 'tail')
-        bias1_tid = self.make_track_id('pch', 1, 'g', bias_loc[1], width=w_bias)
+        cm_tidx = self.get_track_index('pch', 1, 'g', bias_loc[0])
+        bias1_tidx = self.get_track_index('pch', 1, 'g', bias_loc[1])
         tail1_tidx = self.get_track_index('pch', 1, 'ds', tail_loc[0])
         tail2_tidx = self.get_track_index('pch', 0, 'ds', nout_loc[0])
         bias2_tid = self.make_track_id('pch', 0, 'ds', nout_loc[1], width=w_bias)
 
-        self.connect_differential_tracks([inl['d'], inr['d'], biasl['d'], biasr['d']], [biasm['d'], inm['d']],
+        self.connect_differential_tracks([inl['d'], inr['d'], bias1l['d'], bias1r['d']], [biasm['d'], inm['d']],
                                          hm_layer, tail2_tidx, tail1_tidx, width=w_tail)
-        bias1 = self.connect_to_tracks([biasl['g'], biasm['g'], biasr['g']], bias1_tid)
         bias2 = self.connect_to_tracks(inm['s'], bias2_tid)
+
+        bias1_warrs = [bias1l['g'], biasm['g'], bias1r['g'], bias2l['g'], bias2r['g']]
+        cm_warrs = [cm2l['g'], cm2r['g']]
+        bias1, cmbias = self.connect_differential_tracks(bias1_warrs, cm_warrs, hm_layer, bias1_tidx, cm_tidx,
+                                                         width=w_bias)
         mid_tid = self.grid.coord_to_nearest_track(vm_layer, bias1.middle)
         bias_vtid = TrackID(vm_layer, mid_tid, width=tr_manager.get_width(vm_layer, 'bias'))
         bias = self.connect_to_tracks([bias1, bias2], bias_vtid)
 
-        # connect outputs
+        # connect middle wires
         w_out = tr_manager.get_width(hm_layer, 'out')
-        outp_tidx = self.get_track_index('nch', 0, 'g', ng_loc[0])
-        outn_tidx = self.get_track_index('nch', 0, 'g', ng_loc[1])
-        outp_warrs = [inr['s'], ngmr['s'], dioder['s'], dioder['g'], ngml['g']]
-        outn_warrs = [inl['s'], ngml['s'], diodel['s'], diodel['g'], ngmr['g']]
-        outp, outn = self.connect_differential_tracks(outp_warrs, outn_warrs, hm_layer,
-                                                      outp_tidx, outn_tidx, width=w_out)
+        midp_tidx = self.get_track_index('nch', 0, 'g', ng_loc[0])
+        midn_tidx = self.get_track_index('nch', 0, 'g', ng_loc[1])
+        midp_warrs = [inr['s'], ngm1r['s'], diode1r['s'], diode1r['g'], ngm1l['g'], diode2r['g'], ngm2r['g']]
+        midn_warrs = [inl['s'], ngm1l['s'], diode1l['s'], diode1l['g'], ngm1r['g'], diode2l['g'], ngm2l['g']]
+        midp, midn = self.connect_differential_tracks(midp_warrs, midn_warrs, hm_layer,
+                                                      midp_tidx, midn_tidx, width=w_out)
 
         # connect inputs
         w_in = tr_manager.get_width(hm_layer, 'in')
@@ -227,6 +248,13 @@ class OpAmpTwoStage(AnalogBase):
                                                             hm_layer, [inc1_tidx, inp_tidx, inn_tidx, inc2_tidx],
                                                             width=w_in)
 
+        # connect outputs
+        out_tidx = (int((inp_tidx + inn_tidx) * 2) // 2) / 2
+        outp = self.connect_to_tracks([diode2l['d'], ngm2l['d'], bias2l['d'], cm2l['d']],
+                                      TrackID(hm_layer, out_tidx, width=w_out))
+        outn = self.connect_to_tracks([diode2r['d'], ngm2r['d'], bias2r['d'], cm2r['d']],
+                                      TrackID(hm_layer, out_tidx, width=w_out))
+
         # fill dummies
         vss_warrs, vdd_warrs = self.fill_dummy()
 
@@ -235,6 +263,9 @@ class OpAmpTwoStage(AnalogBase):
         self.add_pin('inp', inp, show=show_pins)
         self.add_pin('inn', inn, show=show_pins)
         self.add_pin('bias', bias, show=show_pins)
+        self.add_pin('cmbias', cmbias, show=show_pins)
+        self.add_pin('midp', midp, show=show_pins)
+        self.add_pin('midn', midn, show=show_pins)
         self.add_pin('outp', outp, show=show_pins)
         self.add_pin('outn', outn, show=show_pins)
         self.add_pin('VSS', vss_warrs, show=show_pins)
