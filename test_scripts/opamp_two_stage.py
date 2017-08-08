@@ -4,7 +4,7 @@ from bag.io import read_yaml
 from bag.core import BagProject
 from bag.layout import RoutingGrid, TemplateDB
 
-from analog_ec.op_amp.core import DiffAmpDiodeLoadPFB
+from analog_ec.op_amp.core import OpAmpTwoStage
 
 
 def make_tdb(prj, target_lib, specs):
@@ -27,7 +27,7 @@ def generate(prj, specs):
     temp_db = make_tdb(prj, impl_lib, specs)
 
     name_list = [cell_name]
-    template = temp_db.new_template(params=params, temp_cls=DiffAmpDiodeLoadPFB, debug=False)
+    template = temp_db.new_template(params=params, temp_cls=OpAmpTwoStage, debug=False)
     print('creating layout')
     temp_db.batch_layout(prj, [template], name_list)
     print('done')
@@ -48,7 +48,7 @@ def generate_sch(prj, specs, sch_params):
 
 if __name__ == '__main__':
 
-    block_specs = read_yaml('layout_specs/diffamp_diode_pfb.yaml')
+    block_specs = read_yaml('layout_specs/opamp_two_stage.yaml')
 
     local_dict = locals()
     if 'bprj' not in local_dict:
@@ -60,4 +60,4 @@ if __name__ == '__main__':
         bprj = local_dict['bprj']
 
     sch_info = generate(bprj, block_specs)
-    generate_sch(bprj, block_specs, sch_info)
+    # generate_sch(bprj, block_specs, sch_info)

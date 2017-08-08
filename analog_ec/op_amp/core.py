@@ -15,7 +15,7 @@ from bag.layout.routing import TrackID, TrackManager
 from abs_templates_ec.analog_core import AnalogBase
 
 
-class DiffAmpDiodeLoadPFB(AnalogBase):
+class OpAmpTwoStage(AnalogBase):
     """A differential amplifier with diode load/positive feedback.
 
     Parameters
@@ -35,7 +35,7 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
-        super(DiffAmpDiodeLoadPFB, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
+        super(OpAmpTwoStage, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
@@ -89,37 +89,45 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         min_fg_sep = self.params['min_fg_sep']
 
         # calculate total number of fingers
-        seg_tail = seg_dict['tail']
+        seg_tail1 = seg_dict['tail1']
+        seg_tail2 = seg_dict['tail2']
         seg_in = seg_dict['in']
         seg_ref = seg_dict['ref']
-        seg_diode = seg_dict['diode']
-        seg_ngm = seg_dict['ngm']
+        seg_diode1 = seg_dict['diode1']
+        seg_ngm1 = seg_dict['ngm1']
+        seg_diode2 = seg_dict['diode2']
+        seg_ngm2 = seg_dict['ngm2']
 
         stack_tail = stack_dict['tail']
         stack_in = stack_dict['in']
         stack_diode = stack_dict['diode']
         stack_ngm = stack_dict['ngm']
 
-        fg_tail = seg_tail * stack_tail
+        fg_tail1 = seg_tail1 * stack_tail
+        fg_tail2 = seg_tail2 * stack_tail
         fg_in = seg_in * stack_in
-        fg_diode = seg_diode * stack_diode
-        fg_ngm = seg_ngm * stack_ngm
-        fg_load = fg_diode + fg_ngm
+        fg_diode1 = seg_diode1 * stack_diode
+        fg_ngm1 = seg_ngm1 * stack_ngm
+        fg_diode2 = seg_diode2 * stack_diode
+        fg_ngm2 = seg_ngm2 * stack_ngm
+        fg_load = fg_diode1 + fg_ngm1
+        fg_in2 = fg_diode2 + fg_ngm2
         fg_ref = seg_ref * stack_in
 
         # error checking
-        if fg_tail != fg_in:
+        if fg_tail1 != fg_in:
             raise ValueError('This template assumes fg_tail = fg_in')
         if stack_tail % stack_in != 0 and stack_in % stack_tail != 0:
             raise ValueError('one of stack_tail/stack_in must divide the other.')
         if stack_ngm % stack_in != 0 and stack_in % stack_ngm != 0:
             raise ValueError('one of stack_ngm/stack_in must divide the other.')
 
-        fg_single = max(fg_in, fg_load)
-        fg_tot = 2 * (fg_single + ndum) + 2 * min_fg_sep + fg_ref
-        ndum_tail = fg_tot - 2 * fg_in - fg_ref
-        ndum_in = ndum_tail - 6
-        ndum_load = fg_tot - 2 * fg_load - 4
+        fg_single1 = max(fg_in, fg_load)
+        fg_single2 = max(fg_tail2, fg_diode2 + fg_ngm2)
+        fg_tot = 2 * (fg_single1 + fg_single2 + ndum) + 4 * min_fg_sep + fg_ref
+        ndum_tail = fg_tot - 2 * fg_in - 2 * fg_tail2 - fg_ref
+        ndum_in = fg_tot - 2 * fg_in - fg_ref - 6
+        ndum_load = fg_tot - 2 * fg_load - 2 * fg_in2 - 4
 
         # get width/threshold/orientation info
         nw_list = [w_dict['load']]
@@ -152,7 +160,7 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         sp_tail_in = tr_manager.get_space(hm_layer, ('tail', 'in'))
         pds_tracks.append(num_tail + sp_tail_in)
         # allocate tracks for bias + bias/tail space
-        num_bias, bias_loc = tr_manager.place_wires(hm_layer, ['bias'])
+        num_bias, bias_loc = tr_manager.place_wires(hm_layer, ['bias', 'bias'])
         sp_bias_tail = tr_manager.get_space(hm_layer, ('bias', 'tail'))
         pg_tracks.append(num_bias + sp_bias_tail)
 
@@ -161,19 +169,20 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
                        ng_tracks=ng_tracks, nds_tracks=nds_tracks, pg_tracks=pg_tracks, pds_tracks=pds_tracks,
                        n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf)
 
-        # draw transistors
-        col_right = ndum + fg_single + 2 * min_fg_sep + fg_ref
-        load_start = ndum + fg_single - fg_load
-        diodel = self.draw_mos_conn('nch', 0, load_start, fg_diode, 2, 0, stack=stack_diode)
-        ngml = self.draw_mos_conn('nch', 0, load_start + fg_diode, fg_ngm, 2, 0, stack=stack_ngm)
-        ngmr = self.draw_mos_conn('nch', 0, col_right, fg_ngm, 2, 0, stack=stack_ngm)
-        dioder = self.draw_mos_conn('nch', 0, col_right + fg_ngm, fg_diode, 2, 0, stack=stack_diode)
-        inl = self.draw_mos_conn('pch', 0, ndum + fg_single - fg_in, fg_in, 0, 2, stack=stack_in)
-        inm = self.draw_mos_conn('pch', 0, ndum + fg_single + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
+        # draw stage1 transistors
+        col_left = ndum + fg_single2 + min_fg_sep
+        col_right = col_left + fg_single1 + 2 * min_fg_sep + fg_ref
+        load_start = col_left + fg_single1 - fg_load
+        diodel = self.draw_mos_conn('nch', 0, load_start, fg_diode1, 2, 0, stack=stack_diode)
+        ngml = self.draw_mos_conn('nch', 0, load_start + fg_diode1, fg_ngm1, 2, 0, stack=stack_ngm)
+        ngmr = self.draw_mos_conn('nch', 0, col_right, fg_ngm1, 2, 0, stack=stack_ngm)
+        dioder = self.draw_mos_conn('nch', 0, col_right + fg_ngm1, fg_diode1, 2, 0, stack=stack_diode)
+        inl = self.draw_mos_conn('pch', 0, col_left + fg_single1 - fg_in, fg_in, 0, 2, stack=stack_in)
+        inm = self.draw_mos_conn('pch', 0, col_left + fg_single1 + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
         inr = self.draw_mos_conn('pch', 0, col_right, fg_in, 0, 2, stack=stack_in)
-        biasl = self.draw_mos_conn('pch', 1, ndum + fg_single - fg_tail, fg_tail, 2, 0, stack=stack_tail)
-        biasm = self.draw_mos_conn('pch', 1, ndum + fg_single + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
-        biasr = self.draw_mos_conn('pch', 1, col_right, fg_tail, 2, 0, stack=stack_tail)
+        biasl = self.draw_mos_conn('pch', 1, col_left + fg_single1 - fg_tail1, fg_tail1, 2, 0, stack=stack_tail)
+        biasm = self.draw_mos_conn('pch', 1, col_left + fg_single1 + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
+        biasr = self.draw_mos_conn('pch', 1, col_right, fg_tail1, 2, 0, stack=stack_tail)
 
         # draw connections
         # connect VDD/VSS
@@ -183,7 +192,7 @@ class DiffAmpDiodeLoadPFB(AnalogBase):
         # connect bias/tail wires
         w_bias = tr_manager.get_width(hm_layer, 'bias')
         w_tail = tr_manager.get_width(hm_layer, 'tail')
-        bias1_tid = self.make_track_id('pch', 1, 'g', bias_loc[0], width=w_bias)
+        bias1_tid = self.make_track_id('pch', 1, 'g', bias_loc[1], width=w_bias)
         tail1_tidx = self.get_track_index('pch', 1, 'ds', tail_loc[0])
         tail2_tidx = self.get_track_index('pch', 0, 'ds', nout_loc[0])
         bias2_tid = self.make_track_id('pch', 0, 'ds', nout_loc[1], width=w_bias)
