@@ -1,0 +1,188 @@
+lib_name: bag_analog_ec
+cell_name: opamp_wrapper
+pins: [ "indc", "outac", "inac", "outdc", "VDD", "VSS", "midp", "midn" ]
+instances:
+  XDUT:
+    lib_name: bag_analog_ec
+    cell_name: opamp_two_stage
+    instpins:
+      midn:
+        direction: output
+        net_name: "midn"
+        num_bits: 1
+      midp:
+        direction: output
+        net_name: "midp"
+        num_bits: 1
+      cmbias:
+        direction: input
+        net_name: "outcm"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      outp:
+        direction: output
+        net_name: "outp"
+        num_bits: 1
+      outn:
+        direction: output
+        net_name: "outn"
+        num_bits: 1
+      inp:
+        direction: input
+        net_name: "inp"
+        num_bits: 1
+      inn:
+        direction: input
+        net_name: "inn"
+        num_bits: 1
+      ref:
+        direction: input
+        net_name: "indc"
+        num_bits: 1
+      bias:
+        direction: inputOutput
+        net_name: "ibias"
+        num_bits: 1
+  PIN1:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  XBALOUT:
+    lib_name: analogLib
+    cell_name: ideal_balun
+    instpins:
+      c:
+        direction: inputOutput
+        net_name: "outdc"
+        num_bits: 1
+      d:
+        direction: inputOutput
+        net_name: "outac"
+        num_bits: 1
+      n:
+        direction: inputOutput
+        net_name: "outn"
+        num_bits: 1
+      p:
+        direction: inputOutput
+        net_name: "outp"
+        num_bits: 1
+  XBALIN:
+    lib_name: analogLib
+    cell_name: ideal_balun
+    instpins:
+      c:
+        direction: inputOutput
+        net_name: "indc"
+        num_bits: 1
+      d:
+        direction: inputOutput
+        net_name: "inac"
+        num_bits: 1
+      n:
+        direction: inputOutput
+        net_name: "inn"
+        num_bits: 1
+      p:
+        direction: inputOutput
+        net_name: "inp"
+        num_bits: 1
+  PIN9:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN8:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN5:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN4:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  ECMFB:
+    lib_name: analogLib
+    cell_name: vcvs
+    instpins:
+      NC+:
+        direction: inputOutput
+        net_name: "outdc"
+        num_bits: 1
+      NC-:
+        direction: inputOutput
+        net_name: "outcm"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outcm"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  COUTN:
+    lib_name: analogLib
+    cell_name: cap
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outn"
+        num_bits: 1
+  COUTP:
+    lib_name: analogLib
+    cell_name: cap
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outp"
+        num_bits: 1
+  XBIAS:
+    lib_name: bag_ec_testbenches
+    cell_name: bias_sources
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      vbias:
+        direction: inputOutput
+        net_name: "outcm"
+        num_bits: 1
+      ibias:
+        direction: inputOutput
+        net_name: "ibias"
+        num_bits: 1
