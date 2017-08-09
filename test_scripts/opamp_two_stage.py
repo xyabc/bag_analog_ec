@@ -36,7 +36,7 @@ def generate(prj, specs):
 
 def generate_sch(prj, specs, sch_params):
     dut_lib = 'bag_analog_ec'
-    dut_cell = 'diffamp_diode_pfb'
+    dut_cell = 'opamp_two_stage'
 
     impl_lib = specs['impl_lib']
     cell_name = specs['cell_name']
@@ -60,4 +60,4 @@ if __name__ == '__main__':
         bprj = local_dict['bprj']
 
     sch_info = generate(bprj, block_specs)
-    # generate_sch(bprj, block_specs, sch_info)
+    generate_sch(bprj, block_specs, sch_info)
