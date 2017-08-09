@@ -30,7 +30,7 @@ def generate(prj, specs):
     template = temp_db.new_template(params=params, temp_cls=OpAmpTwoStage, debug=False)
     print('creating layout')
     temp_db.batch_layout(prj, [template], name_list)
-    print('done')
+    print('layout done')
     return template.sch_params
 
 
@@ -42,20 +42,27 @@ def generate_sch(prj, specs, sch_params):
     cell_name = specs['cell_name']
 
     dsn = prj.create_design_module(dut_lib, dut_cell)
+    print('designing schematic')
     dsn.design(**sch_params)
+    print('creating schematic')
     dsn.implement_design(impl_lib, top_cell_name=cell_name, erase=True)
+    print('schematic done')
 
 
 def run_lvs_rcx(prj, specs):
     impl_lib = specs['impl_lib']
     cell_name = specs['cell_name']
 
+    print('run lvs')
     lvs_passed, lvs_log = prj.run_lvs(impl_lib, cell_name)
     if not lvs_passed:
         raise ValueError('LVS died.  check log: %s' % lvs_log)
+    print('lvs passed')
+    print('run rcx')
     rcx_passed, rcx_log = prj.run_rcx(impl_lib, cell_name)
     if not rcx_passed:
         raise ValueError('RCX died.  check log: %s' % rcx_log)
+    print('rcx passed')
 
 if __name__ == '__main__':
 
