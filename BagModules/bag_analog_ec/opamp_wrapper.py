@@ -65,12 +65,12 @@ class bag_analog_ec__opamp_wrapper(Module):
         self.replace_instance_master('XDUT', dut_lib, dut_cell, static=True)
         vcvs = self.instances['ECMFB']
         vcvs.parameters['egain'] = gain_cmfb
-        vcvs.parameters['minm'] = 0.0
+        vcvs.parameters['minm'] = '0.0'
         vcvs.parameters['maxm'] = vdd
         self.instances['COUTP'].parameters['c'] = cload
         self.instances['COUTN'].parameters['c'] = cload
 
-        voltage_dict = {'outcm': ('outdc', 'VSS', voutcm)}
+        voltage_dict = {'outcm': ('outcm', 'VSS', voutcm)}
         current_dict = {'ibias': ('ibias', 'VSS', ibias)}
         self.instances['XBIAS'].design(voltage_dict=voltage_dict, current_dict=current_dict)
         self.reconnect_instance_terminal('XBIAS', 'outcm', 'outcm')

@@ -16,7 +16,7 @@ instances:
         num_bits: 1
       cmbias:
         direction: input
-        net_name: "outcm"
+        net_name: "cmbias"
         num_bits: 1
       VSS:
         direction: inputOutput
@@ -136,7 +136,7 @@ instances:
         num_bits: 1
       PLUS:
         direction: inputOutput
-        net_name: "outcm"
+        net_name: "cmbias"
         num_bits: 1
       MINUS:
         direction: inputOutput

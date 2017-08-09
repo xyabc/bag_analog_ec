@@ -64,6 +64,57 @@ def run_lvs_rcx(prj, specs):
         raise ValueError('RCX died.  check log: %s' % rcx_log)
     print('rcx passed')
 
+
+def generate_tb_dc(prj, specs):
+    impl_lib = specs['impl_lib']
+    cell_name = specs['cell_name']
+    tb_specs = specs['tb_dc']
+
+    tb_lib = tb_specs['lib_name']
+    tb_cell = tb_specs['cell_name']
+    wrapper_cell = tb_specs['wrapper_name']
+    gain_cmfb = tb_specs['gain_cmfb']
+    cload = tb_specs['cload']
+    vdd = tb_specs['vdd']
+    voutcm = tb_specs['voutcm']
+    ibias = tb_specs['ibias']
+
+    sim_envs = tb_specs['sim_envs']
+    view_name = tb_specs['view_name']
+    vmax = tb_specs['vmax']
+    num_pts = tb_specs['num_pts']
+    vindc = tb_specs['vindc']
+
+    wrapper_sch = prj.create_design_module(tb_lib, wrapper_cell)
+    print('designing wrapper schematic')
+    wrapper_sch.design(dut_lib=impl_lib, dut_cell=cell_name, gain_cmfb='gain_cmfb', cload='cload',
+                       vdd='vdd', voutcm='voutcm', ibias='ibias')
+    print('creating wrapper schematic')
+    wrapper_sch.implement_design(impl_lib, top_cell_name=wrapper_cell, erase=True)
+
+    tb_sch = prj.create_design_module(tb_lib, tb_cell)
+    print('designing tb schematic')
+    tb_sch.design(dut_lib=impl_lib, dut_cell=wrapper_cell)
+    print('creating tb schematic')
+    tb_sch.implement_design(impl_lib, top_cell_name=tb_cell, erase=True)
+
+    tb = prj.configure_testbench(impl_lib, tb_cell)
+    tb.set_simulation_environments(sim_envs)
+    tb.set_simulation_view(impl_lib, cell_name, view_name)
+
+    tb.set_parameter('vdd', vdd)
+    tb.set_parameter('gain_fb', gain_cmfb)
+    tb.set_parameter('gain_cmfb', gain_cmfb)
+    tb.set_parameter('cload', cload)
+    tb.set_parameter('voutcm', voutcm)
+    tb.set_parameter('ibias', ibias)
+    tb.set_parameter('vindc', vindc)
+    tb.set_parameter('vmax', vmax)
+    tb.set_parameter('num_pts', num_pts)
+    tb.update_testbench()
+
+    print('generate tb_dc done')
+
 if __name__ == '__main__':
 
     block_specs = read_yaml('layout_specs/opamp_two_stage.yaml')
@@ -77,6 +128,7 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    sch_info = generate(bprj, block_specs)
-    generate_sch(bprj, block_specs, sch_info)
-    run_lvs_rcx(bprj, block_specs)
+    # sch_info = generate(bprj, block_specs)
+    # generate_sch(bprj, block_specs, sch_info)
+    # run_lvs_rcx(bprj, block_specs)
+    generate_tb_dc(bprj, block_specs)
