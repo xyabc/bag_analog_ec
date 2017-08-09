@@ -46,6 +46,17 @@ def generate_sch(prj, specs, sch_params):
     dsn.implement_design(impl_lib, top_cell_name=cell_name, erase=True)
 
 
+def run_lvs_rcx(prj, specs):
+    impl_lib = specs['impl_lib']
+    cell_name = specs['cell_name']
+
+    lvs_passed, lvs_log = prj.run_lvs(impl_lib, cell_name)
+    if not lvs_passed:
+        raise ValueError('LVS died.  check log: %s' % lvs_log)
+    rcx_passed, rcx_log = prj.run_rcx(impl_lib, cell_name)
+    if not rcx_passed:
+        raise ValueError('RCX died.  check log: %s' % rcx_log)
+
 if __name__ == '__main__':
 
     block_specs = read_yaml('layout_specs/opamp_two_stage.yaml')
@@ -61,3 +72,4 @@ if __name__ == '__main__':
 
     sch_info = generate(bprj, block_specs)
     generate_sch(bprj, block_specs, sch_info)
+    run_lvs_rcx(bprj, block_specs)
