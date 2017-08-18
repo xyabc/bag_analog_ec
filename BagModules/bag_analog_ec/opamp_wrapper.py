@@ -30,6 +30,7 @@ from builtins import *
 import os
 import pkg_resources
 
+from bag import float_to_si_string
 from bag.design import Module
 
 
@@ -43,14 +44,14 @@ class bag_analog_ec__opamp_wrapper(Module):
     Fill in high level description here.
     """
 
-    param_list = ['dut_lib', 'dut_cell', 'gain_cmfb', 'cload', 'vdd', 'voutcm', 'ibias']
+    param_list = ['dut_lib', 'dut_cell', 'gain_cmfb', 'cload', 'vdd']
 
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
         Module.__init__(self, bag_config, yaml_file, parent=parent, prj=prj, **kwargs)
         for par in self.param_list:
             self.parameters[par] = None
 
-    def design(self, dut_lib='', dut_cell='', gain_cmfb=200, cload=200e-15, vdd=1.0, voutcm=0.5, ibias=100e-9):
+    def design(self, dut_lib='', dut_cell='', gain_cmfb=200, cload=200e-15, vdd=1.0):
         """Create the OpAmp wrapper for simulation purposes.
         """
         local_dict = locals()
@@ -64,17 +65,19 @@ class bag_analog_ec__opamp_wrapper(Module):
 
         self.replace_instance_master('XDUT', dut_lib, dut_cell, static=True)
         vcvs = self.instances['ECMFB']
+
+        if not isinstance(gain_cmfb, str):
+            gain_cmfb = float_to_si_string(gain_cmfb)
+        if not isinstance(vdd, str):
+            vdd = float_to_si_string(vdd)
+        if not isinstance(cload, str):
+            cload = float_to_si_string(cload)
+
         vcvs.parameters['egain'] = gain_cmfb
         vcvs.parameters['minm'] = '0.0'
         vcvs.parameters['maxm'] = vdd
         self.instances['COUTP'].parameters['c'] = cload
         self.instances['COUTN'].parameters['c'] = cload
-
-        voltage_dict = {'outcm': ('outcm', 'VSS', voutcm)}
-        current_dict = {'ibias': ('ibias', 'VSS', ibias)}
-        self.instances['XBIAS'].design(voltage_dict=voltage_dict, current_dict=current_dict)
-        self.reconnect_instance_terminal('XBIAS', 'outcm', 'outcm')
-        self.reconnect_instance_terminal('XBIAS', 'ibias', 'ibias')
 
     def get_layout_params(self, **kwargs):
         """Returns a dictionary with layout parameters.

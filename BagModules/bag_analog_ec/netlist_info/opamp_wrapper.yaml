@@ -1,6 +1,6 @@
 lib_name: bag_analog_ec
 cell_name: opamp_wrapper
-pins: [ "indc", "outac", "inac", "outdc", "VDD", "VSS", "midp", "midn" ]
+pins: [ "indc", "outac", "inac", "outdc", "VDD", "VSS", "ibias", "midp", "midn", "voutcm" ]
 instances:
   XDUT:
     lib_name: bag_analog_ec
@@ -50,6 +50,14 @@ instances:
         direction: inputOutput
         net_name: "ibias"
         num_bits: 1
+  PIN10:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN11:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
   PIN1:
     lib_name: basic
     cell_name: ipin
@@ -132,7 +140,7 @@ instances:
         num_bits: 1
       NC-:
         direction: inputOutput
-        net_name: "outcm"
+        net_name: "voutcm"
         num_bits: 1
       PLUS:
         direction: inputOutput
@@ -165,24 +173,4 @@ instances:
       PLUS:
         direction: inputOutput
         net_name: "outp"
-        num_bits: 1
-  XBIAS:
-    lib_name: bag_ec_testbenches
-    cell_name: bias_sources
-    instpins:
-      VSS:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      VDD:
-        direction: inputOutput
-        net_name: "VDD"
-        num_bits: 1
-      vbias:
-        direction: inputOutput
-        net_name: "outcm"
-        num_bits: 1
-      ibias:
-        direction: inputOutput
-        net_name: "ibias"
         num_bits: 1
