@@ -1,6 +1,6 @@
 lib_name: bag_analog_ec
-cell_name: opamp_wrapper
-pins: [ "indc", "outac", "inac", "outdc", "VDD", "VSS", "ibias", "midp", "midn", "voutcm" ]
+cell_name: opamp_two_stage_wrapper_dm
+pins: [ "indc", "outac", "inac", "outdc", "VDD", "VSS", "ibias", "midac", "middc", "voutcm" ]
 instances:
   XDUT:
     lib_name: bag_analog_ec
@@ -66,6 +66,26 @@ instances:
     lib_name: basic
     cell_name: ipin
     instpins: {}
+  XBALMID:
+    lib_name: analogLib
+    cell_name: ideal_balun
+    instpins:
+      c:
+        direction: inputOutput
+        net_name: "middc"
+        num_bits: 1
+      d:
+        direction: inputOutput
+        net_name: "midac"
+        num_bits: 1
+      n:
+        direction: inputOutput
+        net_name: "midn"
+        num_bits: 1
+      p:
+        direction: inputOutput
+        net_name: "midp"
+        num_bits: 1
   XBALOUT:
     lib_name: analogLib
     cell_name: ideal_balun
@@ -106,7 +126,7 @@ instances:
         direction: inputOutput
         net_name: "inp"
         num_bits: 1
-  PIN9:
+  PIN12:
     lib_name: basic
     cell_name: opin
     instpins: {}
@@ -150,6 +170,30 @@ instances:
         direction: inputOutput
         net_name: "VSS"
         num_bits: 1
+  CFBP:
+    lib_name: analogLib
+    cell_name: cap
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outp"
+        num_bits: 1
+  CFBN:
+    lib_name: analogLib
+    cell_name: cap
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outn"
+        num_bits: 1
   COUTN:
     lib_name: analogLib
     cell_name: cap
@@ -173,4 +217,28 @@ instances:
       PLUS:
         direction: inputOutput
         net_name: "outp"
+        num_bits: 1
+  RFBP:
+    lib_name: analogLib
+    cell_name: res
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "midn"
+        num_bits: 1
+  RFBN:
+    lib_name: analogLib
+    cell_name: res
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "midp"
         num_bits: 1

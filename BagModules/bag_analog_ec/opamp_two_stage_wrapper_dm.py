@@ -34,24 +34,24 @@ from bag import float_to_si_string
 from bag.design import Module
 
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'opamp_wrapper.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'opamp_two_stage_wrapper_dm.yaml'))
 
 
 # noinspection PyPep8Naming
-class bag_analog_ec__opamp_wrapper(Module):
-    """Module for library bag_analog_ec cell opamp_wrapper.
+class bag_analog_ec__opamp_two_stage_wrapper_dm(Module):
+    """Module for library bag_analog_ec cell opamp_two_stage_wrapper_dm.
 
     Fill in high level description here.
     """
 
-    param_list = ['dut_lib', 'dut_cell', 'gain_cmfb', 'cload', 'vdd']
+    param_list = ['dut_lib', 'dut_cell', 'gain_cmfb', 'cload', 'cfb', 'rfb', 'vdd']
 
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
         Module.__init__(self, bag_config, yaml_file, parent=parent, prj=prj, **kwargs)
         for par in self.param_list:
             self.parameters[par] = None
 
-    def design(self, dut_lib='', dut_cell='', gain_cmfb=200, cload=200e-15, vdd=1.0):
+    def design(self, dut_lib='', dut_cell='', gain_cmfb=200, cload=200e-15, cfb=1e-15, rfb=1e6, vdd=1.0):
         """Create the OpAmp wrapper for simulation purposes.
         """
         local_dict = locals()
@@ -72,12 +72,20 @@ class bag_analog_ec__opamp_wrapper(Module):
             vdd = float_to_si_string(vdd)
         if not isinstance(cload, str):
             cload = float_to_si_string(cload)
+        if not isinstance(cfb, str):
+            cfb = float_to_si_string(cfb)
+        if not isinstance(rfb, str):
+            rfb = float_to_si_string(rfb)
 
         vcvs.parameters['egain'] = gain_cmfb
         vcvs.parameters['minm'] = '0.0'
         vcvs.parameters['maxm'] = vdd
         self.instances['COUTP'].parameters['c'] = cload
         self.instances['COUTN'].parameters['c'] = cload
+        self.instances['CFBP'].parameters['c'] = cfb
+        self.instances['CFBN'].parameters['c'] = cfb
+        self.instances['RFBP'].parameters['r'] = rfb
+        self.instances['RFBN'].parameters['r'] = rfb
 
     def get_layout_params(self, **kwargs):
         """Returns a dictionary with layout parameters.
