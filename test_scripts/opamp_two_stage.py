@@ -6,16 +6,13 @@ from ckt_dsn_ec.analog.amplifier.opamp_two_stage import OpAmpTwoStageChar
 
 
 def run_main(prj):
+    phase_margin = 45
+    res_var = 0.2
     spec_file = 'layout_specs/opamp_two_stage_1e8.yaml'
 
     sim = OpAmpTwoStageChar(prj, spec_file)
 
-    ans = sim.find_cfb(45, 0.2,  gen_dsn=False)
-    cfb = list(ans.values())[0]
-    # cfb = 30e-15
-    rfb = sim.specs['feedback_params']['rfb']
-
-    sim.verify(rfb, cfb, gen_dsn=False)
+    cfb, corner_list, funity_list, pm_list = sim.find_cfb(phase_margin, res_var,  gen_dsn=True)
 
 
 if __name__ == '__main__':
