@@ -42,14 +42,14 @@ def design_only():
     design(top_specs, nch_db, pch_db)
 
 
-def design_close_loop(prj):
+def design_close_loop(prj, max_iter=100):
     interp_method = 'spline'
     w_list = [2]
     nch_conf_list = ['data/mos_char_nch_stack_w2_vbs/specs.yaml', ]
     pch_conf_list = ['data/mos_char_pch_stack_w2_vbs/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
     ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
-    iter_cnt = 1
+    iter_cnt = 0
     f_unit_min_sim = -1
     k_max = 2.0
 
@@ -61,22 +61,26 @@ def design_close_loop(prj):
     f_unit_dsn_targ = f_unit_targ = top_specs['dsn_specs']['f_unit']
 
     cfb, corner_list, f_unit_list, pm_list = None, None, None, None
-    while f_unit_min_sim < f_unit_targ:
+    sim, dsn_info = None, None
+    while f_unit_min_sim < f_unit_targ and iter_cnt < max_iter:
         print('Iteration %d, f_unit_dsn_targ = %.4g' % (iter_cnt, f_unit_dsn_targ))
         top_specs['dsn_specs']['f_unit'] = f_unit_dsn_targ
+        if dsn_info is not None:
+            top_specs['dsn_specs']['i1_min_size'] = dsn_info['i1_size']
 
         dsn = design(top_specs, nch_db, pch_db)
+        dsn_info = dsn.get_dsn_info()
+        pprint.pprint(dsn_info, width=120)
+
         ver_specs = dsn.get_specs_verification(top_specs)
 
         with open_file(ver_specs_fname, 'w') as f:
             yaml.dump(ver_specs, f)
 
         sim = OpAmpTwoStageChar(prj, ver_specs_fname)
-        cfb, corner_list, f_unit_list, pm_list = sim.find_cfb()
+        cfb, corner_list, f_unit_list, pm_list = sim.find_cfb(min_scale=0.6, max_scale=1.6)
 
         f_unit_min_sim = min(f_unit_list)
-        dsn_info = dsn.get_dsn_info()
-        f_unit_min_dsn = min(dsn_info['f_unit'])
         k = f_unit_targ / f_unit_min_sim
         k_real = min(k, k_max)
         print('k = %.4g, k_real = %.4g' % (k, k_real))
@@ -89,6 +93,12 @@ def design_close_loop(prj):
     print('funit = %s' % f_unit_list)
     print('phase margin = %s' % pm_list)
 
+    print('running DC simulation')
+    sim.run_simulations(tb_type='tb_dc')
+    _, gain_list = sim.process_dc_data()
+    print('gain = %s' % gain_list)
+
+    return dsn_info
 
 if __name__ == '__main__':
     local_dict = locals()
@@ -100,5 +110,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    design_close_loop(bprj)
+    design_close_loop(bprj, max_iter=1)
     # design_only()
