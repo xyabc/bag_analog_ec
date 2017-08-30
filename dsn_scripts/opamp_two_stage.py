@@ -52,6 +52,7 @@ def design_close_loop(prj, max_iter=100):
     iter_cnt = 0
     f_unit_min_sim = -1
     k_max = 2.0
+    k_min = 1.1
 
     print('create transistor database')
     nch_db = MOSDBDiscrete(w_list, nch_conf_list, 1, method=interp_method, cfit_method='average')
@@ -70,6 +71,7 @@ def design_close_loop(prj, max_iter=100):
 
         dsn = design(top_specs, nch_db, pch_db)
         dsn_info = dsn.get_dsn_info()
+        f_unit_min_dsn = min(dsn_info['f_unit'])
         pprint.pprint(dsn_info, width=120)
 
         ver_specs = dsn.get_specs_verification(top_specs)
@@ -82,20 +84,19 @@ def design_close_loop(prj, max_iter=100):
 
         f_unit_min_sim = min(f_unit_list)
         k = f_unit_targ / f_unit_min_sim
-        k_real = min(k, k_max)
+        k_real = max(k_min, min(k, k_max))
         print('k = %.4g, k_real = %.4g' % (k, k_real))
-        f_unit_dsn_targ *= k_real
+        f_unit_dsn_targ = f_unit_min_dsn * k_real
         iter_cnt += 1
 
     print('close loop design done.')
+    print('running DC simulation')
+    sim.run_simulations(tb_type='tb_dc')
+    _, gain_list = sim.process_dc_data()
     print('cfb = %.4g' % cfb)
     print('corners = %s' % corner_list)
     print('funit = %s' % f_unit_list)
     print('phase margin = %s' % pm_list)
-
-    print('running DC simulation')
-    sim.run_simulations(tb_type='tb_dc')
-    _, gain_list = sim.process_dc_data()
     print('gain = %s' % gain_list)
 
     return dsn_info
