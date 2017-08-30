@@ -100,6 +100,16 @@ def design_close_loop(prj, max_iter=100):
 
     return dsn_info
 
+
+def plot_data(prj):
+    ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
+    sim = OpAmpTwoStageChar(prj, ver_specs_fname)
+
+    sim.process_dc_data(plot=True)
+    sim.process_ac_data(plot=True)
+    import matplotlib.pyplot as plt
+    plt.show()
+
 if __name__ == '__main__':
     local_dict = locals()
     if 'bprj' not in local_dict:
@@ -110,5 +120,6 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    design_close_loop(bprj, max_iter=1)
+    design_close_loop(bprj, max_iter=10)
     # design_only()
+    # plot_data(bprj)
