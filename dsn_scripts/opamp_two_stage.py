@@ -29,9 +29,9 @@ def design(top_specs, nch_db, pch_db):
 
 def design_only():
     interp_method = 'spline'
-    w_list = [2]
-    nch_conf_list = ['data/mos_char_nch_stack_w2_vbs/specs.yaml', ]
-    pch_conf_list = ['data/mos_char_pch_stack_w2_vbs/specs.yaml', ]
+    w_list = [4]
+    nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
+    pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
 
     print('create transistor database')
@@ -44,9 +44,9 @@ def design_only():
 
 def design_close_loop(prj, max_iter=100):
     interp_method = 'spline'
-    w_list = [2]
-    nch_conf_list = ['data/mos_char_nch_stack_w2_vbs/specs.yaml', ]
-    pch_conf_list = ['data/mos_char_pch_stack_w2_vbs/specs.yaml', ]
+    w_list = [4]
+    nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
+    pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
     ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
     iter_cnt = 0
@@ -72,7 +72,6 @@ def design_close_loop(prj, max_iter=100):
         dsn = design(top_specs, nch_db, pch_db)
         dsn_info = dsn.get_dsn_info()
         f_unit_min_dsn = min(dsn_info['f_unit'])
-        pprint.pprint(dsn_info, width=120)
 
         ver_specs = dsn.get_specs_verification(top_specs)
 
