@@ -110,6 +110,7 @@ def plot_data(prj):
     import matplotlib.pyplot as plt
     plt.show()
 
+
 if __name__ == '__main__':
     local_dict = locals()
     if 'bprj' not in local_dict:
