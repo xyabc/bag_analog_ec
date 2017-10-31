@@ -29,6 +29,7 @@ from builtins import *
 
 import os
 import pkg_resources
+from typing import Dict, Any
 
 from bag.design import Module
 
@@ -43,12 +44,34 @@ class bag_analog_ec__pch_stack(Module):
     Fill in high level description here.
     """
 
-    param_list = ['w', 'l', 'seg', 'intent', 'stack']
-
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
         Module.__init__(self, bag_config, yaml_file, parent=parent, prj=prj, **kwargs)
-        for par in self.param_list:
-            self.parameters[par] = None
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        """Returns a dictionary from parameter names to descriptions.
+
+        Returns
+        -------
+        param_info : Optional[Dict[str, str]]
+            dictionary from parameter names to descriptions.
+        """
+        return dict(
+            w='Transistor width in meters or number of fins.',
+            l='Transistor length in meters.',
+            seg='Transistor number of segments.',
+            intent='Transistor threshold flavor.',
+            stack='Number of stacked transistors in a segment.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            intent='standard',
+            stack=1,
+        )
 
     def design(self, w=4, l=16e-9, seg=10, intent='standard', stack=1):
         """To be overridden by subclasses to design this module.
@@ -66,12 +89,6 @@ class bag_analog_ec__pch_stack(Module):
         restore_instance()
         array_instance()
         """
-        local_dict = locals()
-        for par in self.param_list:
-            if par not in local_dict:
-                raise Exception('Parameter %s not defined' % par)
-            self.parameters[par] = local_dict[par]
-
         if seg == 1:
             raise ValueError('Cannot make 1 finger transistor.')
 
@@ -90,39 +107,5 @@ class bag_analog_ec__pch_stack(Module):
                 cur_term['D'] = 'mid%d<%d:0>' % (idx - 1, seg - 1)
             term_list.append(cur_term)
 
-        self.array_instance(inst_name, name_list, term_list=term_list, same=True)
-        self.instances[inst_name][0].design(w=w, l=l, nf=1, intent=intent)
-
-    def get_layout_params(self, **kwargs):
-        """Returns a dictionary with layout parameters.
-
-        This method computes the layout parameters used to generate implementation's
-        layout.  Subclasses should override this method if you need to run post-extraction
-        layout.
-
-        Parameters
-        ----------
-        kwargs :
-            any extra parameters you need to generate the layout parameters dictionary.
-            Usually you specify layout-specific parameters here, like metal layers of
-            input/output, customizable wire sizes, and so on.
-
-        Returns
-        -------
-        params : dict[str, any]
-            the layout parameters dictionary.
-        """
-        return {}
-
-    def get_layout_pin_mapping(self):
-        """Returns the layout pin mapping dictionary.
-
-        This method returns a dictionary used to rename the layout pins, in case they are different
-        than the schematic pins.
-
-        Returns
-        -------
-        pin_mapping : dict[str, str]
-            a dictionary from layout pin names to schematic pin names.
-        """
-        return {}
+        self.instances[inst_name].design(w=w, l=l, nf=1, intent=intent)
+        self.array_instance(inst_name, name_list, term_list=term_list)
