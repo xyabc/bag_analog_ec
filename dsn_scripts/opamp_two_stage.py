@@ -35,8 +35,8 @@ def design_only():
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
 
     print('create transistor database')
-    nch_db = MOSDBDiscrete(w_list, nch_conf_list, 1, method=interp_method, cfit_method='average')
-    pch_db = MOSDBDiscrete(w_list, pch_conf_list, 1, method=interp_method, cfit_method='average')
+    nch_db = MOSDBDiscrete(nch_conf_list, method=interp_method, cfit_method='average')
+    pch_db = MOSDBDiscrete(pch_conf_list, method=interp_method, cfit_method='average')
 
     top_specs = read_yaml(amp_specs_fname)
     design(top_specs, nch_db, pch_db)
@@ -55,8 +55,8 @@ def design_close_loop(prj, max_iter=100):
     k_min = 1.1
 
     print('create transistor database')
-    nch_db = MOSDBDiscrete(w_list, nch_conf_list, 1, method=interp_method, cfit_method='average')
-    pch_db = MOSDBDiscrete(w_list, pch_conf_list, 1, method=interp_method, cfit_method='average')
+    nch_db = MOSDBDiscrete(nch_conf_list, method=interp_method, cfit_method='average')
+    pch_db = MOSDBDiscrete(pch_conf_list, method=interp_method, cfit_method='average')
 
     top_specs = read_yaml(amp_specs_fname)
     f_unit_dsn_targ = f_unit_targ = top_specs['dsn_specs']['f_unit']
