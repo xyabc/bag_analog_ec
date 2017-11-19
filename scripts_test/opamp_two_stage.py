@@ -8,7 +8,7 @@ from ckt_dsn_ec.analog.amplifier.opamp_two_stage import OpAmpTwoStageChar
 def run_main(prj):
     phase_margin = 45
     res_var = 0.2
-    spec_file = 'layout_specs/opamp_two_stage_1e8.yaml'
+    spec_file = 'specs_layout/opamp_two_stage_1e8.yaml'
 
     sim = OpAmpTwoStageChar(prj, spec_file)
 
