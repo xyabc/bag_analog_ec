@@ -1,0 +1,64 @@
+lib_name: bag_analog_ec
+cell_name: cap_mom
+pins: [ "plus", "minus", "VSS" ]
+instances:
+  XN:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "minus"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+  XP:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "plus"
+        num_bits: 1
+  PIN2:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  XSUPCONN:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  XNCONN:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+  XPCONN:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1
