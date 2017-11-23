@@ -63,7 +63,7 @@ class bag_analog_ec__cap_mom(Module):
             layer='metal resistor layer ID.',
         )
 
-    def design(self, w=0.2e-6, l=0.2e-6, layer_id=3):
+    def design(self, w=0.2e-6, l=0.2e-6, layer=3):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
