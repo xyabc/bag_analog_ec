@@ -2,11 +2,6 @@
 
 """This package contain layout classes for differential amplifiers."""
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
-# noinspection PyUnresolvedReferences,PyCompatibility
-from builtins import *
-
 from typing import Dict, Any, Set
 
 from bag.layout.template import TemplateDB
@@ -35,7 +30,7 @@ class OpAmpTwoStage(AnalogBase):
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
-        super(OpAmpTwoStage, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
+        AnalogBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
