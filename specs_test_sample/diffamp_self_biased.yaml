@@ -1,0 +1,36 @@
+impl_lib: 'AAAFOO_TEST_DIFFAMP_SELFBIASED'
+impl_cell: 'DIFFAMP_SELFBIASED'
+sch_lib: 'bag_analog_ec'
+sch_cell: 'diffamp_self_biased'
+
+routing_grid:
+  layers: [4, 5]
+  widths: [0.1, 0.1]
+  spaces: [0.1, 0.1]
+  bot_dir: 'x'
+
+params:
+  lch: 20.0e-9
+  ptap_w: 6
+  ntap_w: 6
+  w_dict:
+    ptail: 4
+    ntail: 4
+    pin: 4
+    nin: 4
+  th_dict:
+    ptail: 'standard'
+    ntail: 'standard'
+    pin: 'standard'
+    nin: 'standard'
+  seg_dict:
+    ptail: 6
+    ntail: 6
+    pin: 4
+    nin: 4
+  ndum: 4
+  tr_widths: {}
+  tr_spaces: {}
+  show_pins: True
+  guard_ring_nf: 0
+  top_layer: !!null
