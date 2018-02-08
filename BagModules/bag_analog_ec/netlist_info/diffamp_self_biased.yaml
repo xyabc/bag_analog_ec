@@ -1,8 +1,8 @@
 lib_name: bag_analog_ec
-cell_name: diffamp_diode_pfb
-pins: [ "VDD", "VSS", "inp", "inn", "ref", "outp", "outn", "bias" ]
+cell_name: diffamp_self_biased
+pins: [ "VDD", "VSS", "inp", "inn", "out" ]
 instances:
-  XDIOR:
+  XNTAIL2:
     lib_name: bag_analog_ec
     cell_name: nch_stack
     instpins:
@@ -12,180 +12,76 @@ instances:
         num_bits: 1
       D:
         direction: inputOutput
-        net_name: "outp"
+        net_name: "ntail"
         num_bits: 1
       B:
         direction: inputOutput
         net_name: "VSS"
-        num_bits: 1
-      G:
-        direction: inputOutput
-        net_name: "outp"
-        num_bits: 1
-  XDIOL:
-    lib_name: bag_analog_ec
-    cell_name: nch_stack
-    instpins:
-      S:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      D:
-        direction: inputOutput
-        net_name: "outn"
-        num_bits: 1
-      B:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      G:
-        direction: inputOutput
-        net_name: "outn"
-        num_bits: 1
-  XNGML:
-    lib_name: bag_analog_ec
-    cell_name: nch_stack
-    instpins:
-      S:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      D:
-        direction: inputOutput
-        net_name: "outn"
-        num_bits: 1
-      B:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      G:
-        direction: inputOutput
-        net_name: "outp"
-        num_bits: 1
-  XNGMR:
-    lib_name: bag_analog_ec
-    cell_name: nch_stack
-    instpins:
-      S:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      D:
-        direction: inputOutput
-        net_name: "outp"
-        num_bits: 1
-      B:
-        direction: inputOutput
-        net_name: "VSS"
-        num_bits: 1
-      G:
-        direction: inputOutput
-        net_name: "outn"
-        num_bits: 1
-  XRES:
-    lib_name: bag_analog_ec
-    cell_name: pch_stack
-    instpins:
-      S:
-        direction: inputOutput
-        net_name: "tail_ref"
-        num_bits: 1
-      D:
-        direction: inputOutput
-        net_name: "bias"
-        num_bits: 1
-      B:
-        direction: inputOutput
-        net_name: "VDD"
-        num_bits: 1
-      G:
-        direction: inputOutput
-        net_name: "ref"
-        num_bits: 1
-  XREF:
-    lib_name: bag_analog_ec
-    cell_name: pch_stack
-    instpins:
-      S:
-        direction: inputOutput
-        net_name: "VDD"
-        num_bits: 1
-      D:
-        direction: inputOutput
-        net_name: "tail_ref"
-        num_bits: 1
-      B:
-        direction: inputOutput
-        net_name: "VDD"
         num_bits: 1
       G:
         direction: inputOutput
         net_name: "bias"
         num_bits: 1
-  XTAIL:
+  XNTAIL1:
     lib_name: bag_analog_ec
-    cell_name: pch_stack
+    cell_name: nch_stack
     instpins:
       S:
         direction: inputOutput
-        net_name: "VDD"
+        net_name: "VSS"
         num_bits: 1
       D:
         direction: inputOutput
-        net_name: "tail"
+        net_name: "ntail"
         num_bits: 1
       B:
         direction: inputOutput
-        net_name: "VDD"
+        net_name: "VSS"
         num_bits: 1
       G:
         direction: inputOutput
         net_name: "bias"
         num_bits: 1
-  XINR:
+  XNINN:
     lib_name: bag_analog_ec
-    cell_name: pch_stack
+    cell_name: nch_stack
     instpins:
       S:
         direction: inputOutput
-        net_name: "tail"
+        net_name: "ntail"
         num_bits: 1
       D:
         direction: inputOutput
-        net_name: "outp"
+        net_name: "out"
         num_bits: 1
       B:
         direction: inputOutput
-        net_name: "VDD"
+        net_name: "VSS"
         num_bits: 1
       G:
         direction: inputOutput
         net_name: "inn"
         num_bits: 1
-  XINL:
+  XNINP:
     lib_name: bag_analog_ec
-    cell_name: pch_stack
+    cell_name: nch_stack
     instpins:
       S:
         direction: inputOutput
-        net_name: "tail"
+        net_name: "ntail"
         num_bits: 1
       D:
         direction: inputOutput
-        net_name: "outn"
+        net_name: "bias"
         num_bits: 1
       B:
         direction: inputOutput
-        net_name: "VDD"
+        net_name: "VSS"
         num_bits: 1
       G:
         direction: inputOutput
         net_name: "inp"
         num_bits: 1
-  PIN7:
-    lib_name: basic
-    cell_name: iopin
-    instpins: {}
   PIN1:
     lib_name: basic
     cell_name: iopin
@@ -193,10 +89,6 @@ instances:
   PIN0:
     lib_name: basic
     cell_name: iopin
-    instpins: {}
-  PIN4:
-    lib_name: basic
-    cell_name: ipin
     instpins: {}
   PIN3:
     lib_name: basic
@@ -206,14 +98,90 @@ instances:
     lib_name: basic
     cell_name: ipin
     instpins: {}
-  PIN6:
+  PIN4:
     lib_name: basic
     cell_name: opin
     instpins: {}
-  PIN5:
-    lib_name: basic
-    cell_name: opin
-    instpins: {}
+  XPTAIL2:
+    lib_name: bag_analog_ec
+    cell_name: pch_stack
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "ptail"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "bias"
+        num_bits: 1
+  XPTAIL1:
+    lib_name: bag_analog_ec
+    cell_name: pch_stack
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "ptail"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "bias"
+        num_bits: 1
+  XPINN:
+    lib_name: bag_analog_ec
+    cell_name: pch_stack
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "ptail"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "out"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "inn"
+        num_bits: 1
+  XPINP:
+    lib_name: bag_analog_ec
+    cell_name: pch_stack
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "ptail"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "bias"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "inp"
+        num_bits: 1
   XDUM:
     lib_name: BAG_prim
     cell_name: nmos4_standard
