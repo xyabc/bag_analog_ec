@@ -151,13 +151,13 @@ class DiffAmpSelfBiased(AnalogBase):
 
         # draw transistors
         ntaill = self.draw_mos_conn('nch', 0, ndum_ntail, fg_ntail, 2, 0,
-                                    s_net='tailn', d_net='VSS')
+                                    s_net='tailn', d_net='')
         ntailr = self.draw_mos_conn('nch', 0, fg_tot - ndum_ntail - fg_ntail, fg_ntail, 2, 0,
-                                    s_net='tailn', d_net='VSS')
+                                    s_net='tailn', d_net='')
         ptaill = self.draw_mos_conn('pch', 1, ndum_ptail, fg_ptail, 0, 2,
-                                    s_net='tailp', d_net='VDD')
+                                    s_net='tailp', d_net='')
         ptailr = self.draw_mos_conn('pch', 1, fg_tot - ndum_ptail - fg_ptail, fg_ptail, 0, 2,
-                                    s_net='tailp', d_net='VDD')
+                                    s_net='tailp', d_net='')
         if (ndum_nin - ndum_ntail) % 2 == 1:
             tail_nin_port, out_nin_port = 'd', 's'
             sdir, ddir = 2, 0

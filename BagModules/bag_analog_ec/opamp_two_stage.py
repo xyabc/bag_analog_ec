@@ -37,10 +37,10 @@ class bag_analog_ec__opamp_two_stage(Module):
             th_dict='Dictionary of transistor threshold.',
             seg_dict='Dictionary of transistor number of segments.',
             stack_dict='Dictionary of transistor stack count.',
-            dum_dict='Dictionary of dummies.',
+            dum_info='Dummy information data structure.',
         )
 
-    def design(self, lch, w_dict, th_dict, seg_dict, stack_dict, dum_dict):
+    def design(self, lch, w_dict, th_dict, seg_dict, stack_dict, dum_info):
         """Design the differential amplifier with diode/positive-feedback load.
         """
         # design dummies
@@ -50,26 +50,6 @@ class bag_analog_ec__opamp_two_stage(Module):
         th_tail = th_dict['tail']
         th_in = th_dict['in']
         th_load = th_dict['load']
-        ndum_tail = dum_dict['tail']
-        ndum_in = dum_dict['in']
-        ndum_load = dum_dict['load']
-        pdum_list = []
-        if ndum_tail > 0:
-            pdum_list.append((w_tail, th_tail, ndum_tail))
-        if ndum_in > 0:
-            pdum_list.append((w_in, th_in, ndum_in))
-
-        # array pmos dummies and design
-        self.array_instance('XPD', ['XPDD%s' % idx for idx in range(len(pdum_list))])
-        for inst, (w_cur, th_cur, ndum_cur) in zip(self.instances['XPD'], pdum_list):
-            inst.design(w=w_cur, l=lch, intent=th_cur, nf=ndum_cur)
-
-        # design rest of the dummies
-        for name in ('XPD1', 'XPD2', 'XPD3'):
-            self.instances[name].design(w=w_in, l=lch, intent=th_in, nf=2)
-        for name in ('XND1', 'XND2'):
-            self.instances[name].design(w=w_load, l=lch, intent=th_load, nf=2)
-        self.instances['XND'].design(w=w_load, l=lch, intent=th_load, nf=ndum_load)
 
         # design main transistors
         seg_tail1 = seg_dict['tail1']
@@ -104,3 +84,6 @@ class bag_analog_ec__opamp_two_stage(Module):
         self.instances['XDIO2R'].design(w=w_load, l=lch, seg=seg_diode2, intent=th_load, stack=stack_diode)
         self.instances['XNGM2L'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load, stack=stack_ngm)
         self.instances['XNGM2R'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load, stack=stack_ngm)
+
+        # design dummies
+        self.design_dummy_transistors(dum_info, 'XDUM', 'VDD', 'VSS')

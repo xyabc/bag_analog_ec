@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 
-"""This package contain layout classes for differential amplifiers."""
+"""This package contain layout classes for operational amplifiers."""
 
 from typing import Dict, Any, Set
 
 from bag.layout.template import TemplateDB
 from bag.layout.routing import TrackID, TrackManager
 
-from abs_templates_ec.analog_core import AnalogBase
+from abs_templates_ec.analog_core import AnalogBaseInfo, AnalogBase
 
 
 class OpAmpTwoStage(AnalogBase):
-    """A differential amplifier with diode load/positive feedback.
+    """An two stage operational amplifier.
+
+    The first stage is a differential amplifier with diode load/positive feedback, and
+    the second stage is a common source.
 
     Parameters
     ----------
@@ -57,11 +60,19 @@ class OpAmpTwoStage(AnalogBase):
             seg_dict='NMOS/PMOS number of segments dictionary.',
             stack_dict='NMOS/PMOS stack parameter dictionary.',
             ndum='Number of left/right dummy fingers.',
-            min_fg_sep='number of fingers that separate transistors.',
-            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable guard ring.',
-            show_pins='True to create pin labels.',
             tr_widths='signal wire width dictionary.',
             tr_spaces='signal wire space dictionary.',
+            show_pins='True to create pin labels.',
+            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable guard ring.',
+            top_layer='The AnalogBase top layer.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        return dict(
+            show_pins=True,
+            guard_ring_nf=0,
+            top_layer=None,
         )
 
     def draw_layout(self):
@@ -81,7 +92,10 @@ class OpAmpTwoStage(AnalogBase):
         tr_spaces = self.params['tr_spaces']
         show_pins = self.params['show_pins']
         guard_ring_nf = self.params['guard_ring_nf']
-        min_fg_sep = self.params['min_fg_sep']
+        top_layer = self.params['top_layer']
+
+        ana_info = AnalogBaseInfo(self.grid, lch, guard_ring_nf, top_layer=top_layer)
+        min_fg_sep = ana_info.min_fg_sep
 
         # calculate total number of fingers
         seg_tail1 = seg_dict['tail1']
@@ -166,32 +180,51 @@ class OpAmpTwoStage(AnalogBase):
         # draw base
         self.draw_base(lch, fg_tot, ptap_w, ntap_w, nw_list, nth_list, pw_list, pth_list,
                        ng_tracks=ng_tracks, nds_tracks=nds_tracks, pg_tracks=pg_tracks, pds_tracks=pds_tracks,
-                       n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf)
+                       n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf,
+                       top_layer=top_layer)
 
         # draw stage1 transistors
         col_left = ndum + fg_single2 + fg_single1 + min_fg_sep
         col_right = col_left + 2 * min_fg_sep + fg_ref
-        diode1l = self.draw_mos_conn('nch', 0, col_left - fg_load, fg_diode1, 2, 0, stack=stack_diode)
-        ngm1l = self.draw_mos_conn('nch', 0, col_left - fg_ngm1, fg_ngm1, 2, 0, stack=stack_ngm)
-        ngm1r = self.draw_mos_conn('nch', 0, col_right, fg_ngm1, 2, 0, stack=stack_ngm)
-        diode1r = self.draw_mos_conn('nch', 0, col_right + fg_ngm1, fg_diode1, 2, 0, stack=stack_diode)
-        inl = self.draw_mos_conn('pch', 0, col_left - fg_in, fg_in, 0, 2, stack=stack_in)
-        inm = self.draw_mos_conn('pch', 0, col_left + min_fg_sep, fg_ref, 0, 2, stack=stack_in)
-        inr = self.draw_mos_conn('pch', 0, col_right, fg_in, 0, 2, stack=stack_in)
-        bias1l = self.draw_mos_conn('pch', 1, col_left - fg_tail1, fg_tail1, 2, 0, stack=stack_tail)
-        biasm = self.draw_mos_conn('pch', 1, col_left + min_fg_sep, fg_ref, 2, 0, stack=stack_tail)
-        bias1r = self.draw_mos_conn('pch', 1, col_right, fg_tail1, 2, 0, stack=stack_tail)
+        diode1l = self.draw_mos_conn('nch', 0, col_left - fg_load, fg_diode1, 2, 0,
+                                     stack=stack_diode, s_net='midn', d_net='')
+        ngm1l = self.draw_mos_conn('nch', 0, col_left - fg_ngm1, fg_ngm1, 2, 0,
+                                   stack=stack_ngm, s_net='midn', d_net='')
+        ngm1r = self.draw_mos_conn('nch', 0, col_right, fg_ngm1, 2, 0,
+                                   stack=stack_ngm, s_net='midp', d_net='')
+        diode1r = self.draw_mos_conn('nch', 0, col_right + fg_ngm1, fg_diode1, 2, 0,
+                                     stack=stack_diode, s_net='midp', d_net='')
+        inl = self.draw_mos_conn('pch', 0, col_left - fg_in, fg_in, 0, 2,
+                                 stack=stack_in, s_net='midn', d_net='tail')
+        inm = self.draw_mos_conn('pch', 0, col_left + min_fg_sep, fg_ref, 0, 2,
+                                 stack=stack_in, s_net='bias', d_net='tail_ref')
+        inr = self.draw_mos_conn('pch', 0, col_right, fg_in, 0, 2,
+                                 stack=stack_in, s_net='midp', d_net='tail')
+        bias1l = self.draw_mos_conn('pch', 1, col_left - fg_tail1, fg_tail1, 2, 0,
+                                    stack=stack_tail, s_net='', d_net='tail')
+        biasm = self.draw_mos_conn('pch', 1, col_left + min_fg_sep, fg_ref, 2, 0,
+                                   stack=stack_tail, s_net='', d_net='tail_ref')
+        bias1r = self.draw_mos_conn('pch', 1, col_right, fg_tail1, 2, 0,
+                                    stack=stack_tail, s_net='', d_net='tail')
         # draw stage2 transistors
         col_left = ndum + fg_single2
         col_right += fg_single1 + min_fg_sep
-        diode2l = self.draw_mos_conn('nch', 0, col_left - fg_in2, fg_diode2, 0, 2, stack=stack_diode)
-        ngm2l = self.draw_mos_conn('nch', 0, col_left - fg_ngm2, fg_ngm2, 0, 2, stack=stack_ngm)
-        ngm2r = self.draw_mos_conn('nch', 0, col_right, fg_ngm2, 0, 2, stack=stack_ngm)
-        diode2r = self.draw_mos_conn('nch', 0, col_right + fg_ngm2, fg_diode2, 0, 2, stack=stack_diode)
-        cm2l = self.draw_mos_conn('pch', 1, col_left - fg_bias2, fg_tailcm, 2, 0, stack=stack_tail)
-        bias2l = self.draw_mos_conn('pch', 1, col_left - fg_tail2, fg_tail2, 2, 0, stack=stack_tail)
-        bias2r = self.draw_mos_conn('pch', 1, col_right, fg_tail2, 2, 0, stack=stack_tail)
-        cm2r = self.draw_mos_conn('pch', 1, col_right + fg_tail2, fg_tailcm, 2, 0, stack=stack_tail)
+        diode2l = self.draw_mos_conn('nch', 0, col_left - fg_in2, fg_diode2, 0, 2,
+                                     stack=stack_diode, s_net='', d_net='outp')
+        ngm2l = self.draw_mos_conn('nch', 0, col_left - fg_ngm2, fg_ngm2, 0, 2,
+                                   stack=stack_ngm, s_net='', d_net='outp')
+        ngm2r = self.draw_mos_conn('nch', 0, col_right, fg_ngm2, 0, 2,
+                                   stack=stack_ngm, s_net='', d_net='outn')
+        diode2r = self.draw_mos_conn('nch', 0, col_right + fg_ngm2, fg_diode2, 0, 2,
+                                     stack=stack_diode, s_net='', d_net='outn')
+        cm2l = self.draw_mos_conn('pch', 1, col_left - fg_bias2, fg_tailcm, 2, 0,
+                                  stack=stack_tail, s_net='', d_net='outp')
+        bias2l = self.draw_mos_conn('pch', 1, col_left - fg_tail2, fg_tail2, 2, 0,
+                                    stack=stack_tail, s_net='', d_net='outp')
+        bias2r = self.draw_mos_conn('pch', 1, col_right, fg_tail2, 2, 0,
+                                    stack=stack_tail, s_net='', d_net='outn')
+        cm2r = self.draw_mos_conn('pch', 1, col_right + fg_tail2, fg_tailcm, 2, 0,
+                                  stack=stack_tail, s_net='', d_net='outn')
 
         # draw connections
         # connect VDD/VSS
@@ -273,5 +306,5 @@ class OpAmpTwoStage(AnalogBase):
             th_dict=th_dict,
             seg_dict=seg_dict,
             stack_dict=stack_dict,
-            dum_dict={'tail': ndum_tail, 'in': ndum_in, 'load': ndum_load},
+            dum_info=self.get_sch_dummy_info(),
         )
