@@ -38,7 +38,7 @@ def generate(prj, specs, gen_sch=False, run_lvs=False):
         print('creating schematics')
 
         dsn = prj.create_design_module(sch_lib, sch_cell)
-        dsn.design(params)
+        dsn.design(**template.sch_params)
         dsn.implement_design(impl_lib, top_cell_name=impl_cell)
         print('schematic done.')
 

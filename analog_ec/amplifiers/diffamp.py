@@ -151,21 +151,21 @@ class DiffAmpSelfBiased(AnalogBase):
 
         # draw transistors
         ntaill = self.draw_mos_conn('nch', 0, ndum_ntail, fg_ntail, 2, 0,
-                                    s_net='tailn', d_net='')
+                                    s_net='ntail', d_net='')
         ntailr = self.draw_mos_conn('nch', 0, fg_tot - ndum_ntail - fg_ntail, fg_ntail, 2, 0,
-                                    s_net='tailn', d_net='')
+                                    s_net='ntail', d_net='')
         ptaill = self.draw_mos_conn('pch', 1, ndum_ptail, fg_ptail, 0, 2,
-                                    s_net='tailp', d_net='')
+                                    s_net='ptail', d_net='')
         ptailr = self.draw_mos_conn('pch', 1, fg_tot - ndum_ptail - fg_ptail, fg_ptail, 0, 2,
-                                    s_net='tailp', d_net='')
+                                    s_net='ptail', d_net='')
         if (ndum_nin - ndum_ntail) % 2 == 1:
             tail_nin_port, out_nin_port = 'd', 's'
             sdir, ddir = 2, 0
-            s_netl, s_netr, d_netl, d_netr = 'outn', 'outp', 'tailn', 'tailn'
+            s_netl, s_netr, d_netl, d_netr = 'outn', 'outp', 'ntail', 'ntail'
         else:
             tail_nin_port, out_nin_port = 's', 'd'
             sdir, ddir = 0, 2
-            s_netl, s_netr, d_netl, d_netr = 'tailn', 'tailn', 'outn', 'outp'
+            s_netl, s_netr, d_netl, d_netr = 'ntail', 'ntail', 'outn', 'outp'
         ninl = self.draw_mos_conn('nch', 1, ndum_nin, fg_nin, sdir, ddir,
                                   s_net=s_netl, d_net=d_netl)
         ninr = self.draw_mos_conn('nch', 1, fg_tot - ndum_nin - fg_nin, fg_nin, sdir, ddir,
@@ -173,11 +173,11 @@ class DiffAmpSelfBiased(AnalogBase):
         if (ndum_pin - ndum_ntail) % 2 == 1:
             tail_pin_port, out_pin_port = 'd', 's'
             sdir, ddir = 0, 2
-            s_netl, s_netr, d_netl, d_netr = 'outn', 'outp', 'tailp', 'tailp'
+            s_netl, s_netr, d_netl, d_netr = 'outn', 'outp', 'ptail', 'ptail'
         else:
             tail_pin_port, out_pin_port = 's', 'd'
             sdir, ddir = 2, 0
-            s_netl, s_netr, d_netl, d_netr = 'tailp', 'tailp', 'outn', 'outp'
+            s_netl, s_netr, d_netl, d_netr = 'ptail', 'ptail', 'outn', 'outp'
         pinl = self.draw_mos_conn('pch', 0, ndum_pin, fg_pin, sdir, ddir,
                                   s_net=s_netl, d_net=d_netl)
         pinr = self.draw_mos_conn('pch', 0, fg_tot - ndum_pin - fg_pin, fg_pin, sdir, ddir,
