@@ -19,7 +19,7 @@ def make_tdb(prj, target_lib, specs):
     return tdb
 
 
-def generate(prj, specs, gen_sch=False):
+def generate(prj, specs, gen_sch=False, run_lvs=False):
     impl_lib = specs['impl_lib']
     impl_cell = specs['impl_cell']
     sch_lib = specs['sch_lib']
@@ -42,6 +42,15 @@ def generate(prj, specs, gen_sch=False):
         dsn.implement_design(impl_lib, top_cell_name=impl_cell)
         print('schematic done.')
 
+        if run_lvs:
+            print('running lvs')
+            lvs_passed, lvs_log = prj.run_lvs(impl_lib, impl_cell)
+            print('LVS log: %s' % lvs_log)
+            if lvs_passed:
+                print('LVS passed!')
+            else:
+                print('LVS failed...')
+
 
 if __name__ == '__main__':
 
@@ -57,4 +66,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    generate(bprj, block_specs, gen_sch=False)
+    # generate(bprj, block_specs, gen_sch=False, run_lvs=False)
+    generate(bprj, block_specs, gen_sch=True, run_lvs=True)
