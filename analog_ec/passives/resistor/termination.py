@@ -293,14 +293,13 @@ class Termination(TemplateBase):
             threshold='the substrate threshold flavor.',
             nser='number of resistors in series in a branch.',
             npar='number of branches in parallel.',
+            ndum='number of dummy resistors.',
+            direction='signal direction.  Either "x" or "y"',
             sub_w='substrate contact width. Set to 0 to disable drawing substrate contact.',
             sub_lch='substrate contact channel length.',
-            direction='signal direction.  Either "x" or "y"',
-            res_type='the resistor type.',
-            grid_type='the resistor routing grid type.',
             em_specs='EM specifications for the termination network.',
-            ext_dir='resistor core extension direction.',
             show_pins='True to show pins.',
+            res_options='Configuration dictionary for ResArrayBase.',
         )
 
     @classmethod
@@ -308,11 +307,9 @@ class Termination(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             direction='y',
-            res_type='standard',
-            grid_type='standard',
-            em_specs={},
-            ext_dir='',
+            em_specs=None,
             show_pins=True,
+            res_options=None,
         )
 
     def draw_layout(self):
@@ -320,13 +317,14 @@ class Termination(TemplateBase):
 
         res_params = self.params.copy()
         res_type = res_params['res_type']
-        grid_type = self.params['grid_type']
         sub_lch = res_params.pop('sub_lch')
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
         show_pins = self.params['show_pins']
+        res_options = self.params['res_options']
 
         # force TerminationCore to be quantized
+        grid_type = res_options.get('grid_type', 'standard')
         top_layer = ResArrayBase.get_top_layer(self.grid.tech_info, grid_type=grid_type) + 1
         res_params['top_layer'] = top_layer
 
