@@ -1,0 +1,33 @@
+impl_lib: 'AAAFOO_TEST_TERMINATION'
+impl_cell: 'TERMINATION'
+sch_lib: ''
+sch_cell: ''
+
+routing_grid:
+  layers: [4, 5]
+  spaces: [0.2, 0.2]
+  widths: [0.2, 0.2]
+  bot_dir: 'y'
+
+params:
+  l: 2.0e-6
+  w: 0.5e-6
+  sub_type: 'ptap'
+  threshold: 'standard'
+  nser: 4
+  npar: 4
+  ndum: 1
+  direction: 'y'
+  sub_w: 0
+  sub_lch: 20.0e-9
+  em_specs: {}
+  show_pins: True
+  res_options: {}
+
+em_params:
+  res_targ: 50
+  num_even: True
+  em_specs:
+    idc: 0.0
+    iac_rms: 1.0e-3
+    iac_peak: 0.0
