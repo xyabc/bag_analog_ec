@@ -167,13 +167,13 @@ class TerminationCore(ResArrayBase):
                 tidx = self.grid.coord_to_nearest_track(vm_layer, ports_b[0].middle, half_track=True)
                 tid = TrackID(vm_layer, tidx, width=vm_w)
                 mid_wire = self.connect_to_tracks([ports_b[1], ports_t[0]], tid)
-                if col_idx == ndum:
+                if row_idx == ndum:
                     bot_wire = self.connect_to_tracks([ports_b[0]], tid, min_len_mode=-1)
                     port_wires[0].append(bot_wire)
-                if col_idx == nx - ndum - 2:
+                if row_idx == ny - ndum - 2:
                     top_wire = self.connect_to_tracks([ports_t[1]], tid, min_len_mode=1)
                     port_wires[2].append(top_wire)
-                if col_idx == (nx // 2) - 1:
+                if row_idx == (ny // 2) - 1:
                     port_wires[1].append(mid_wire)
 
         return 2, port_wires
