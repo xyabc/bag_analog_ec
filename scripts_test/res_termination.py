@@ -29,8 +29,9 @@ def generate(prj, specs):
 
     temp_db = make_tdb(prj, impl_lib, specs)
 
-    temp_list = [temp_db.new_template(params=params, temp_cls=Termination, debug=False), ]
-    temp_db.batch_layout(prj, temp_list, [impl_cell])
+    print('creating layouts')
+    template = temp_db.new_template(params=params, temp_cls=Termination, debug=False)
+    temp_db.batch_layout(prj, [template], [impl_cell])
     print('done')
 
 
