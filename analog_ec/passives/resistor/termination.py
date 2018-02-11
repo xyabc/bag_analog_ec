@@ -31,60 +31,39 @@ class TerminationCore(ResArrayBase):
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
-        super(TerminationCore, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
-
-    @classmethod
-    def get_default_param_values(cls):
-        # type: () -> Dict[str, Any]
-        """Returns a dictionary containing default parameter values.
-
-        Override this method to define default parameter values.  As good practice,
-        you should avoid defining default values for technology-dependent parameters
-        (such as channel length, transistor width, etc.), but only define default
-        values for technology-independent parameters (such as number of tracks).
-
-        Returns
-        -------
-        default_params : Dict[str, Any]
-            dictionary of default parameter values.
-        """
-        return dict(
-            nx=2,
-            ny=1,
-            res_type='reference',
-            grid_type='standard',
-            em_specs={},
-            ext_dir='',
-            show_pins=True,
-            top_layer=None,
-        )
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        ResArrayBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             l='unit resistor length, in meters.',
             w='unit resistor width, in meters.',
             sub_type='the substrate type.',
             threshold='the substrate threshold flavor.',
-            nx='number of resistors in a row.  Must be even.',
-            ny='number of resistors in a column.',
+            nser='number of resistors in series in a branch.',
+            npar='number of branches in parallel.',
+            direction='signal direction.  Either "x" or "y"',
             res_type='the resistor type.',
             grid_type='the resistor routing grid type.',
             em_specs='EM specifications for the termination network.',
             ext_dir='resistor core extension direction.',
             show_pins='True to show pins.',
             top_layer='The top level metal layer.  None for primitive template.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            direction='y',
+            res_type='standard',
+            grid_type='standard',
+            em_specs={},
+            ext_dir='',
+            show_pins=True,
+            top_layer=None,
         )
 
     def draw_layout(self):
@@ -182,60 +161,39 @@ class Termination(TemplateBase):
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
-        super(Termination, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
-
-    @classmethod
-    def get_default_param_values(cls):
-        # type: () -> Dict[str, Any]
-        """Returns a dictionary containing default parameter values.
-
-        Override this method to define default parameter values.  As good practice,
-        you should avoid defining default values for technology-dependent parameters
-        (such as channel length, transistor width, etc.), but only define default
-        values for technology-independent parameters (such as number of tracks).
-
-        Returns
-        -------
-        default_params : Dict[str, Any]
-            dictionary of default parameter values.
-        """
-        return dict(
-            nx=2,
-            ny=1,
-            ext_dir='',
-            res_type='reference',
-            grid_type='standard',
-            em_specs={},
-            show_pins=True,
-        )
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             l='unit resistor length, in meters.',
             w='unit resistor width, in meters.',
-            sub_lch='substrate contact channel length.',
-            sub_w='substrate contact width. Set to 0 to disable drawing substrate contact.',
             sub_type='the substrate type.',
             threshold='the substrate threshold flavor.',
-            nx='number of resistors in a row.  Must be even.',
-            ny='number of resistors in a column.',
+            nser='number of resistors in series in a branch.',
+            npar='number of branches in parallel.',
+            sub_w='substrate contact width. Set to 0 to disable drawing substrate contact.',
+            sub_lch='substrate contact channel length.',
+            direction='signal direction.  Either "x" or "y"',
             res_type='the resistor type.',
             grid_type='the resistor routing grid type.',
             em_specs='EM specifications for the termination network.',
             ext_dir='resistor core extension direction.',
             show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            direction='y',
+            res_type='standard',
+            grid_type='standard',
+            em_specs={},
+            ext_dir='',
+            show_pins=True,
         )
 
     def draw_layout(self):
