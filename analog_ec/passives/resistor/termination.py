@@ -3,13 +3,18 @@
 """This module defines termination resistor layout generators.
 """
 
-from typing import Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any, List
+
+from itertools import chain
 
 from bag.layout.routing import TrackID
 from bag.layout.template import TemplateBase, TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase
 from abs_templates_ec.analog_core.substrate import SubstrateContact
+
+if TYPE_CHECKING:
+    from bag.layout.routing import WireArray
 
 
 class TerminationCore(ResArrayBase):
@@ -44,13 +49,11 @@ class TerminationCore(ResArrayBase):
             threshold='the substrate threshold flavor.',
             nser='number of resistors in series in a branch.',
             npar='number of branches in parallel.',
+            ndum='number of dummy resistors.',
             direction='signal direction.  Either "x" or "y"',
-            res_type='the resistor type.',
-            grid_type='the resistor routing grid type.',
             em_specs='EM specifications for the termination network.',
-            ext_dir='resistor core extension direction.',
             show_pins='True to show pins.',
-            top_layer='The top level metal layer.  None for primitive template.',
+            res_options='Configuration dictionary for ResArrayBase.',
         )
 
     @classmethod
@@ -58,46 +61,66 @@ class TerminationCore(ResArrayBase):
         # type: () -> Dict[str, Any]
         return dict(
             direction='y',
-            res_type='standard',
-            grid_type='standard',
-            em_specs={},
-            ext_dir='',
+            em_specs=None,
             show_pins=True,
-            top_layer=None,
+            res_options=None,
         )
 
     def draw_layout(self):
         # type: () -> None
+        l = self.params['l']
+        w = self.params['w']
+        sub_type = self.params['sub_type']
+        threshold = self.params['threshold']
+        nser = self.params['nser']
+        npar = self.params['npar']
+        ndum = self.params['ndum']
+        direction = self.params['direction']
+        em_specs = self.params['em_specs']
+        show_pins = self.params['show_pins']
+        res_options = self.params['res_options']
 
-        # draw array
-        nx = self.params['nx']
-        ny = self.params['ny']
-        em_specs = self.params.pop('em_specs')
-        show_pins = self.params.pop('show_pins')
+        if em_specs is None:
+            em_specs = {}
+        if res_options is None:
+            res_options = {}
 
-        if nx % 2 != 0 or nx <= 0:
-            raise ValueError('number of resistors in a row must be even and positive.')
+        if direction == 'x':
+            nx = npar + 2 * ndum
+            ny = 2 * (nser + ndum)
+        else:
+            nx = 2 * (nser + ndum)
+            ny = npar + 2 * ndum
 
         div_em_specs = em_specs.copy()
         for key in ('idc', 'iac_rms', 'iac_peak'):
             if key in div_em_specs:
-                div_em_specs[key] = div_em_specs[key] / ny
+                div_em_specs[key] = div_em_specs[key] / npar
             else:
                 div_em_specs[key] = 0.0
 
-        self.draw_array(em_specs=div_em_specs, **self.params)
+        self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny,
+                        em_specs=div_em_specs, **res_options)
 
-        # connect row resistors
+        dum_warrs = self._connect_dummies(direction, nx, ny, ndum)
+
+        if direction == 'x':
+            pass
+        else:
+            self._connect_vertical(nx, ny, ndum, dum_warrs, show_pins)
+
+    def _connect_vertical(self, nx, ny, ndum, dum_warrs, show_pins):
+        # connect series row resistors
         port_wires = [[], [], []]
-        for row_idx in range(ny):
-            for col_idx in range(nx - 1):
+        for row_idx in range(ndum, ny - ndum):
+            for col_idx in range(ndum, nx - ndum - 1):
                 ports_l = self.get_res_ports(row_idx, col_idx)
                 ports_r = self.get_res_ports(row_idx, col_idx + 1)
                 con_par = (col_idx + row_idx) % 2
                 mid_wire = self.connect_wires([ports_l[con_par], ports_r[con_par]])
-                if col_idx == 0:
+                if col_idx == ndum:
                     port_wires[0].append(ports_l[1 - con_par])
-                if col_idx == nx - 2:
+                if col_idx == nx - ndum - 2:
                     port_wires[2].append(ports_r[1 - con_par])
                 if col_idx == (nx // 2) - 1:
                     port_wires[1].append(mid_wire[0])
@@ -116,6 +139,9 @@ class TerminationCore(ResArrayBase):
                         cur_warrs = port_wires[warrs_idx]
                         tidx = self.grid.coord_to_nearest_track(cur_lay, cur_warrs[0].middle, half_track=True)
                         tid = TrackID(cur_lay, tidx, width=cur_w)
+                        if warrs_idx == 1 and lay_idx == 1:
+                            # connect dummy wires to common mode
+                            cur_warrs = cur_warrs + dum_warrs
                         port_wires[warrs_idx] = [self.connect_to_tracks(cur_warrs, tid)]
                 else:
                     # draw one horizontal wire in middle of each row, then connect last vertical wire to it
@@ -140,6 +166,70 @@ class TerminationCore(ResArrayBase):
         self.add_pin('inp', port_wires[0], show=show_pins)
         self.add_pin('inn', port_wires[2], show=show_pins)
         self.add_pin('incm', port_wires[1], show=show_pins)
+
+    def _connect_dummies(self, direction, nx, ny, ndum):
+        # type: (str, int, int, int) -> List[WireArray]
+        if ndum == 0:
+            return []
+
+        # connect row dummies
+        row_warrs = []
+        for row_idx in chain(range(0, ndum), range(ny - ndum, ny)):
+            bot_warrs, top_warrs = [], []
+            for col_idx in range(nx):
+                bot_port, top_port = self.get_res_ports(row_idx, col_idx)
+                bot_warrs.append(bot_port)
+                top_warrs.append(top_port)
+            row_warrs.append(self.connect_wires(bot_warrs))
+            row_warrs.append(self.connect_wires(top_warrs))
+
+        # connect left and right dummies
+        left_warrs, right_warrs = [], []
+        for row_idx in range(ny):
+            bot_warrs, top_warrs = [], []
+            for col_idx in range(0, ndum):
+                bot_port, top_port = self.get_res_ports(row_idx, col_idx)
+                bot_warrs.append(bot_port)
+                top_warrs.append(top_port)
+            left_warrs.append(self.connect_wires(bot_warrs))
+            left_warrs.append(self.connect_wires(top_warrs))
+            bot_warrs, top_warrs = [], []
+            for col_idx in range(nx - ndum, nx):
+                bot_port, top_port = self.get_res_ports(row_idx, col_idx)
+                bot_warrs.append(bot_port)
+                top_warrs.append(top_port)
+            right_warrs.append(self.connect_wires(bot_warrs))
+            right_warrs.append(self.connect_wires(top_warrs))
+
+        vm_layer = self.bot_layer_id + 1
+        # short left and right dummies to dummy rows
+        if direction == 'x':
+            test_port = self.get_res_ports(0, ndum - 1)[0]
+            tidx = self.grid.coord_to_nearest_track(vm_layer, test_port.middle,
+                                                    half_track=True, mode=-1)
+            tid = TrackID(vm_layer, tidx)
+            wleft = self.connect_to_tracks(left_warrs + row_warrs, tid)
+            test_port = self.get_res_ports(0, nx - ndum)[0]
+            tidx = self.grid.coord_to_nearest_track(vm_layer, test_port.middle,
+                                                    half_track=True, mode=1)
+            tid = TrackID(vm_layer, tidx)
+            wright = self.connect_to_tracks(right_warrs + row_warrs, tid)
+            # return vertical wires
+            return [wleft, wright]
+        else:
+
+            test_port = self.get_res_ports(0, 0)[0]
+            tidx = self.grid.coord_to_nearest_track(vm_layer, test_port.middle,
+                                                    half_track=True, mode=-1)
+            tid = TrackID(vm_layer, tidx)
+            self.connect_to_tracks(left_warrs + row_warrs, tid)
+            test_port = self.get_res_ports(0, nx - 1)[0]
+            tidx = self.grid.coord_to_nearest_track(vm_layer, test_port.middle,
+                                                    half_track=True, mode=1)
+            tid = TrackID(vm_layer, tidx)
+            self.connect_to_tracks(right_warrs + row_warrs, tid)
+            # return horizontal row wires
+            return row_warrs
 
 
 class Termination(TemplateBase):
