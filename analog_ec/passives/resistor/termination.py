@@ -88,9 +88,11 @@ class TerminationCore(ResArrayBase):
         if direction == 'x':
             nx = npar + 2 * ndum
             ny = 2 * (nser + ndum)
+            min_tracks = res_options.pop('min_tracks', [1, 2, 1])
         else:
             nx = 2 * (nser + ndum)
             ny = npar + 2 * ndum
+            min_tracks = res_options.pop('min_tracks', [1, 1])
 
         div_em_specs = em_specs.copy()
         for key in ('idc', 'iac_rms', 'iac_peak'):
@@ -100,7 +102,7 @@ class TerminationCore(ResArrayBase):
                 div_em_specs[key] = 0.0
 
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny,
-                        em_specs=div_em_specs, **res_options)
+                        min_tracks=min_tracks, em_specs=div_em_specs, **res_options)
 
         dum_warrs = self._connect_dummies(direction, nx, ny, ndum)
 
@@ -124,7 +126,13 @@ class TerminationCore(ResArrayBase):
                     # connect all wires in last layer to one wire
                     for warrs_idx in range(3):
                         cur_warrs = port_wires[warrs_idx]
-                        tidx = self.grid.coord_to_nearest_track(cur_lay, cur_warrs[0].middle, half_track=True)
+                        if len(cur_warrs) > 1:
+                            mid_coord = (cur_warrs[0].middle + cur_warrs[1].middle) / 2
+                        else:
+                            mid_coord = cur_warrs[0].middle
+                        mid_coord_unit = int(round(mid_coord / self.grid.resolution))
+                        tidx = self.grid.coord_to_nearest_track(cur_lay, mid_coord_unit,
+                                                                half_track=True, unit_mode=True)
                         tid = TrackID(cur_lay, tidx, width=cur_w)
                         if warrs_idx == 1 and lay_idx == lay_start:
                             # connect dummy wires to common mode
@@ -159,19 +167,24 @@ class TerminationCore(ResArrayBase):
         lay_offset = self.bot_layer_id
         vm_layer = lay_offset + 1
         vm_w = self.w_tracks[1]
+        vm_num = self.num_tracks[1]
+        vm_sp = self.grid.get_num_space_tracks(vm_layer, vm_w)
         port_wires = [[], [], []]
         for col_idx in range(ndum, nx - ndum):
+            ltr_idx = self.get_abs_track_index(vm_layer, col_idx, 0)
+            tr_id_sel = (TrackID(vm_layer, ltr_idx + (vm_sp + vm_w - 1) / 2, width=vm_w),
+                         TrackID(vm_layer, ltr_idx + vm_num - 1 - (vm_sp + vm_w - 1) / 2, width=vm_w))
+
             for row_idx in range(ndum, ny - ndum - 1):
                 ports_b = self.get_res_ports(row_idx, col_idx)
                 ports_t = self.get_res_ports(row_idx + 1, col_idx)
-                tidx = self.grid.coord_to_nearest_track(vm_layer, ports_b[0].middle, half_track=True)
-                tid = TrackID(vm_layer, tidx, width=vm_w)
-                mid_wire = self.connect_to_tracks([ports_b[1], ports_t[0]], tid)
+                con_par = (col_idx + row_idx) % 2
+                mid_wire = self.connect_to_tracks([ports_b[con_par], ports_t[con_par]], tr_id_sel[con_par])
                 if row_idx == ndum:
-                    bot_wire = self.connect_to_tracks([ports_b[0]], tid, min_len_mode=-1)
+                    bot_wire = self.connect_to_tracks([ports_b[1 - con_par]], tr_id_sel[1 - con_par], min_len_mode=0)
                     port_wires[0].append(bot_wire)
                 if row_idx == ny - ndum - 2:
-                    top_wire = self.connect_to_tracks([ports_t[1]], tid, min_len_mode=1)
+                    top_wire = self.connect_to_tracks([ports_t[1 - con_par]], tr_id_sel[1 - con_par], min_len_mode=0)
                     port_wires[2].append(top_wire)
                 if row_idx == (ny // 2) - 1:
                     port_wires[1].append(mid_wire)
