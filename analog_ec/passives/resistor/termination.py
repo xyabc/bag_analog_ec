@@ -209,8 +209,8 @@ class TerminationCore(ResArrayBase):
                 bot_port, top_port = self.get_res_ports(row_idx, col_idx)
                 bot_warrs.append(bot_port)
                 top_warrs.append(top_port)
-            row_warrs.append(self.connect_wires(bot_warrs))
-            row_warrs.append(self.connect_wires(top_warrs))
+            row_warrs.extend(self.connect_wires(bot_warrs))
+            row_warrs.extend(self.connect_wires(top_warrs))
 
         # connect left and right dummies
         left_warrs, right_warrs = [], []
@@ -220,15 +220,15 @@ class TerminationCore(ResArrayBase):
                 bot_port, top_port = self.get_res_ports(row_idx, col_idx)
                 bot_warrs.append(bot_port)
                 top_warrs.append(top_port)
-            left_warrs.append(self.connect_wires(bot_warrs))
-            left_warrs.append(self.connect_wires(top_warrs))
+            left_warrs.extend(self.connect_wires(bot_warrs))
+            left_warrs.extend(self.connect_wires(top_warrs))
             bot_warrs, top_warrs = [], []
             for col_idx in range(nx - ndum, nx):
                 bot_port, top_port = self.get_res_ports(row_idx, col_idx)
                 bot_warrs.append(bot_port)
                 top_warrs.append(top_port)
-            right_warrs.append(self.connect_wires(bot_warrs))
-            right_warrs.append(self.connect_wires(top_warrs))
+            right_warrs.extend(self.connect_wires(bot_warrs))
+            right_warrs.extend(self.connect_wires(top_warrs))
 
         vm_layer = self.bot_layer_id + 1
         # short left and right dummies to dummy rows

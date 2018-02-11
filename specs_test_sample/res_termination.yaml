@@ -22,7 +22,8 @@ params:
   sub_lch: 20.0e-9
   em_specs: {}
   show_pins: True
-  res_options: {}
+  res_options:
+    min_tracks: [1, 1, 1, 1]
 
 em_params:
   res_targ: 50
