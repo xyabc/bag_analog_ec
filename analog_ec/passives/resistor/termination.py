@@ -316,7 +316,6 @@ class Termination(TemplateBase):
         # type: () -> None
 
         res_params = self.params.copy()
-        res_type = res_params['res_type']
         sub_lch = res_params.pop('sub_lch')
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
@@ -324,6 +323,7 @@ class Termination(TemplateBase):
         res_options = self.params['res_options']
 
         # force TerminationCore to be quantized
+        res_type = res_options.get('res_type', 'standard')
         grid_type = res_options.get('grid_type', 'standard')
         top_layer = ResArrayBase.get_top_layer(self.grid.tech_info, grid_type=grid_type) + 1
         res_params['top_layer'] = top_layer
