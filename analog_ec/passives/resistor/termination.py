@@ -5,6 +5,7 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any, List
 
+import math
 from itertools import chain
 
 from bag.layout.routing import TrackID
@@ -171,9 +172,13 @@ class TerminationCore(ResArrayBase):
         vm_sp = self.grid.get_num_space_tracks(vm_layer, vm_w)
         port_wires = [[], [], []]
         for col_idx in range(ndum, nx - ndum):
-            ltr_idx = self.get_abs_track_index(vm_layer, col_idx, 0)
-            tr_id_sel = (TrackID(vm_layer, ltr_idx + (vm_sp + vm_w - 1) / 2, width=vm_w),
-                         TrackID(vm_layer, ltr_idx + vm_num - 1 - (vm_sp + vm_w - 1) / 2, width=vm_w))
+            mtr_sum = 2 * self.get_abs_track_index(vm_layer, col_idx, 0) + (vm_num - 1)
+            if isinstance(mtr_sum, float):
+                mtr_sum = math.floor(mtr_sum)
+            mtr_idx = mtr_sum / 2
+
+            tr_id_sel = (TrackID(vm_layer, mtr_idx - (vm_sp + vm_w) / 2, width=vm_w),
+                         TrackID(vm_layer, mtr_idx + (vm_sp + vm_w) / 2, width=vm_w))
 
             for row_idx in range(ndum, ny - ndum - 1):
                 ports_b = self.get_res_ports(row_idx, col_idx)
