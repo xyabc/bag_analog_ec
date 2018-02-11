@@ -105,52 +105,39 @@ class TerminationCore(ResArrayBase):
         dum_warrs = self._connect_dummies(direction, nx, ny, ndum)
 
         if direction == 'x':
-            pass
+            lay_start, port_wires = self._connect_horizontal(nx, ny, ndum)
         else:
-            self._connect_vertical(nx, ny, ndum, dum_warrs, show_pins)
+            lay_start, port_wires = self._connect_vertical(nx, ny, ndum)
 
-    def _connect_vertical(self, nx, ny, ndum, dum_warrs, show_pins):
-        # connect series row resistors
-        port_wires = [[], [], []]
-        for row_idx in range(ndum, ny - ndum):
-            for col_idx in range(ndum, nx - ndum - 1):
-                ports_l = self.get_res_ports(row_idx, col_idx)
-                ports_r = self.get_res_ports(row_idx, col_idx + 1)
-                con_par = (col_idx + row_idx) % 2
-                mid_wire = self.connect_wires([ports_l[con_par], ports_r[con_par]])
-                if col_idx == ndum:
-                    port_wires[0].append(ports_l[1 - con_par])
-                if col_idx == nx - ndum - 2:
-                    port_wires[2].append(ports_r[1 - con_par])
-                if col_idx == (nx // 2) - 1:
-                    port_wires[1].append(mid_wire[0])
+        self._connect_up(direction, lay_start, ndum, npar, port_wires, dum_warrs, show_pins)
 
+    def _connect_up(self, direction, lay_start, ndum, npar, port_wires, dum_warrs, show_pins):
+        last_dir = 'y' if direction == 'x' else 'x'
         lay_offset = self.bot_layer_id
-        last_dir = 'x'
-        for lay_idx in range(1, len(self.w_tracks)):
+        for lay_idx in range(lay_start, len(self.w_tracks)):
             cur_lay = lay_idx + lay_offset
             cur_w = self.w_tracks[lay_idx]
             cur_dir = self.grid.get_direction(cur_lay)
             if cur_dir != last_dir:
                 # layer direction is orthogonal
-                if cur_dir == 'y':
-                    # connect all horizontal wires in last layer to one vertical wire
+                if cur_dir == direction:
+                    # connect all wires in last layer to one wire
                     for warrs_idx in range(3):
                         cur_warrs = port_wires[warrs_idx]
                         tidx = self.grid.coord_to_nearest_track(cur_lay, cur_warrs[0].middle, half_track=True)
                         tid = TrackID(cur_lay, tidx, width=cur_w)
-                        if warrs_idx == 1 and lay_idx == 1:
+                        if warrs_idx == 1 and lay_idx == lay_start:
                             # connect dummy wires to common mode
                             cur_warrs = cur_warrs + dum_warrs
                         port_wires[warrs_idx] = [self.connect_to_tracks(cur_warrs, tid)]
                 else:
-                    # draw one horizontal wire in middle of each row, then connect last vertical wire to it
+                    # draw one wire in middle of each row, then connect last wire to it
                     # this way we distribute currents evenly.
                     cur_p = self.num_tracks[lay_idx]
                     # relative base index.  Round down if we have half-integer number of tracks
                     base_idx_rel = (int(round(cur_p * 2)) // 2 - 1) / 2
-                    base_idx = self.get_abs_track_index(cur_lay, 0, base_idx_rel)
-                    tid = TrackID(cur_lay, base_idx, width=cur_w, num=ny, pitch=cur_p)
+                    base_idx = self.get_abs_track_index(cur_lay, ndum, base_idx_rel)
+                    tid = TrackID(cur_lay, base_idx, width=cur_w, num=npar, pitch=cur_p)
                     for warrs_idx in range(3):
                         port_wires[warrs_idx] = self.connect_to_tracks(port_wires[warrs_idx], tid, min_len_mode=0)
             else:
@@ -166,6 +153,48 @@ class TerminationCore(ResArrayBase):
         self.add_pin('inp', port_wires[0], show=show_pins)
         self.add_pin('inn', port_wires[2], show=show_pins)
         self.add_pin('incm', port_wires[1], show=show_pins)
+
+    def _connect_horizontal(self, nx, ny, ndum):
+        # connect series column resistors
+        lay_offset = self.bot_layer_id
+        vm_layer = lay_offset + 1
+        vm_w = self.w_tracks[1]
+        port_wires = [[], [], []]
+        for col_idx in range(ndum, nx - ndum):
+            for row_idx in range(ndum, ny - ndum - 1):
+                ports_b = self.get_res_ports(row_idx, col_idx)
+                ports_t = self.get_res_ports(row_idx + 1, col_idx)
+                tidx = self.grid.coord_to_nearest_track(vm_layer, ports_b[0].middle, half_track=True)
+                tid = TrackID(vm_layer, tidx, width=vm_w)
+                mid_wire = self.connect_to_tracks([ports_b[1], ports_t[0]], tid)
+                if col_idx == ndum:
+                    bot_wire = self.connect_to_tracks([ports_b[0]], tid, min_len_mode=-1)
+                    port_wires[0].append(bot_wire)
+                if col_idx == nx - ndum - 2:
+                    top_wire = self.connect_to_tracks([ports_t[1]], tid, min_len_mode=1)
+                    port_wires[2].append(top_wire)
+                if col_idx == (nx // 2) - 1:
+                    port_wires[1].append(mid_wire)
+
+        return 2, port_wires
+
+    def _connect_vertical(self, nx, ny, ndum):
+        # connect series row resistors
+        port_wires = [[], [], []]
+        for row_idx in range(ndum, ny - ndum):
+            for col_idx in range(ndum, nx - ndum - 1):
+                ports_l = self.get_res_ports(row_idx, col_idx)
+                ports_r = self.get_res_ports(row_idx, col_idx + 1)
+                con_par = (col_idx + row_idx) % 2
+                mid_wire = self.connect_wires([ports_l[con_par], ports_r[con_par]])
+                if col_idx == ndum:
+                    port_wires[0].append(ports_l[1 - con_par])
+                if col_idx == nx - ndum - 2:
+                    port_wires[2].append(ports_r[1 - con_par])
+                if col_idx == (nx // 2) - 1:
+                    port_wires[1].append(mid_wire[0])
+
+        return 1, port_wires
 
     def _connect_dummies(self, direction, nx, ny, ndum):
         # type: (str, int, int, int) -> List[WireArray]
