@@ -461,7 +461,7 @@ class TerminationCMCore(ResArrayBase):
         if res_options is None:
             res_options = {}
 
-        min_tracks = [1, 2, 1]
+        min_tracks = res_options.pop('min_tracks', [1, 2, 1])
         nx = nseg + 2 * ndum
         ny = 2 * (nres + ndum)
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny,
