@@ -5,7 +5,7 @@ import yaml
 from bag.core import BagProject
 from bag.layout import RoutingGrid, TemplateDB
 
-from analog_ec.passives.resistor.termination import TerminationCMCore
+from analog_ec.layout.passives.resistor import TerminationCMCore
 
 
 def make_tdb(prj, target_lib, specs):

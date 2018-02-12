@@ -4,7 +4,7 @@ import yaml
 
 import bag
 from bag.layout import RoutingGrid, TemplateDB
-from analog_ec.amplifiers.diffamp import DiffAmpSelfBiased
+from analog_ec.layout.amplifiers import DiffAmpSelfBiased
 
 
 def make_tdb(prj, target_lib, specs):
