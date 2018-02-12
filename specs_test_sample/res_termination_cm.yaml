@@ -1,0 +1,21 @@
+impl_lib: 'AAAFOO_TEST_TERMINATION_CM'
+impl_cell: 'TERMINATION_CM'
+sch_lib: ''
+sch_cell: ''
+
+routing_grid:
+  layers: [4, 5]
+  spaces: [0.2, 0.2]
+  widths: [0.2, 0.2]
+  bot_dir: 'y'
+
+params:
+  l: 2.0e-6
+  w: 0.5e-6
+  sub_type: 'ptap'
+  threshold: 'standard'
+  nres: 4
+  nseg: 4
+  ndum: 1
+  show_pins: True
+  res_options: !!null
