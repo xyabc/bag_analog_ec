@@ -1,0 +1,19 @@
+impl_lib: 'AAAFOO_TEST_MOMCAP'
+impl_cell: 'MOMCAP'
+sch_lib: ''
+sch_cell: ''
+
+routing_grid:
+  layers: [4, 5]
+  spaces: [0.2, 0.2]
+  widths: [0.2, 0.2]
+  bot_dir: 'y'
+
+params:
+  cap_bot_layer: 2
+  cap_top_layer: 6
+  cap_width: 10.0
+  cap_height: 10.0
+  port_width: 2
+  show_pins: True
+  cap_options: !!null
