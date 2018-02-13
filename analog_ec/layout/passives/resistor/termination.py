@@ -461,6 +461,7 @@ class TerminationCMCore(ResArrayBase):
         # type: () -> Dict[str, Any]
         return dict(
             show_pins=True,
+            top_layer=None,
             res_options=None,
         )
 
@@ -476,6 +477,7 @@ class TerminationCMCore(ResArrayBase):
             nseg='number of segments.',
             ndum='number of dummy resistors.',
             show_pins='True to draw pin layous.',
+            top_layer='The top quantization layer.',
             res_options='Configuration dictionary for ResArrayBase.',
         )
 
@@ -489,6 +491,7 @@ class TerminationCMCore(ResArrayBase):
         nseg = self.params['nseg']
         ndum = self.params['ndum']
         show_pins = self.params['show_pins']
+        top_layer = self.params['top_layer']
         res_options = self.params['res_options']
 
         bot_layer_id = self.bot_layer_id
@@ -501,12 +504,14 @@ class TerminationCMCore(ResArrayBase):
         elif 'min_tracks' in res_options:
             res_options = res_options.copy()
             res_options.pop('min_tracks')
+        if top_layer is None:
+            top_layer = hm_layer
 
         min_tracks = (1, 2)
         nx = nseg + 2 * ndum
         ny = 2 * (nres + ndum)
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
-                        top_layer=hm_layer, **res_options)
+                        top_layer=top_layer, **res_options)
 
         # connect resistors
         dum_warrs = self._connect_dummies('x', nx, ny, ndum)
