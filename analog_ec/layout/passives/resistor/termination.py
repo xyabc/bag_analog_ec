@@ -88,9 +88,9 @@ class TerminationCore(ResArrayBase):
             em_specs = {}
         if res_options is None:
             res_options = {}
-        else:
+        elif 'min_tracks' in res_options:
             res_options = res_options.copy()
-            del res_options['min_tracks']
+            res_options.pop('min_tracks')
 
         direction = self.grid.get_direction(port_layer)
         min_tracks = [1] * (port_layer - bot_layer_id)
@@ -464,21 +464,26 @@ class TerminationCMCore(ResArrayBase):
         show_pins = self.params['show_pins']
         res_options = self.params['res_options']
 
+        bot_layer_id = self.bot_layer_id
+        hm_layer = bot_layer_id + 2
+
         if nseg % 2 != 0 or nseg < 0:
             raise ValueError('nseg = %d is not positive and even' % nseg)
         if res_options is None:
             res_options = {}
+        elif 'min_tracks' in res_options:
+            res_options = res_options.copy()
+            res_options.pop('min_tracks')
 
-        min_tracks = res_options.pop('min_tracks', [1, 2, 1])
+        min_tracks = (1, 2)
         nx = nseg + 2 * ndum
         ny = 2 * (nres + ndum)
-        self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny,
-                        min_tracks=tuple(min_tracks), **res_options)
+        self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
+                        top_layer=hm_layer, **res_options)
 
         # connect resistors
         dum_warrs = self._connect_dummies('x', nx, ny, ndum)
         inp, inn, incm = self._connect_res(nres, nseg, ndum)
-        hm_layer = self.bot_layer_id + 2
         tidx = self.grid.coord_to_nearest_track(hm_layer, incm.middle, half_track=True)
         tid = TrackID(hm_layer, tidx)
         cm_warr = self.connect_to_tracks(dum_warrs + [incm], tid)
