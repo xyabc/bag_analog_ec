@@ -78,6 +78,7 @@ class MOMCapCore(TemplateBase):
 
         # setup capacitor options
         port_layer = cap_top_layer + 1
+        port_dir = self.grid.get_direction(port_layer)
         top_w = self.grid.get_track_width(port_layer, port_width, unit_mode=True)
         cap_port_width = self.grid.get_min_track_width(cap_top_layer, top_w=top_w, unit_mode=True)
         if cap_options is None:
@@ -93,7 +94,11 @@ class MOMCapCore(TemplateBase):
         # set size
         cap_width = int(round(cap_width / res))
         cap_height = int(round(cap_height / res))
-        bnd_box = BBox(0, 0, cap_width, cap_height + 2 * port_ext, res, unit_mode=True)
+        if port_dir == 'y':
+            bnd_box = BBox(0, 0, cap_width, cap_height + 2 * port_ext, res, unit_mode=True)
+        else:
+            bnd_box = BBox(0, 0, cap_width + 2 * port_ext, cap_height, res, unit_mode=True)
+
         self.set_size_from_bound_box(port_layer, bnd_box, round_up=True)
         bnd_box = self.bound_box
 
