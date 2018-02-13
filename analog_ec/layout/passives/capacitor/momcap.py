@@ -74,19 +74,39 @@ class MOMCapCore(TemplateBase):
         show_pins = self.params['show_pins']
         cap_options = self.params['cap_options']
 
+        res = self.grid.resolution
+
+        # setup capacitor options
+        port_layer = cap_top_layer + 1
+        top_w = self.grid.get_track_width(port_layer, port_width, unit_mode=True)
+        cap_port_width = self.grid.get_min_track_width(cap_top_layer, top_w=top_w, unit_mode=True)
         if cap_options is None:
-            cap_options = {}
+            cap_options = dict(port_widths={cap_top_layer: cap_port_width})
+        elif 'port_widths' in cap_options:
+            cap_options = cap_options.copy()
+            cap_options['port_widths'] = {cap_top_layer: cap_port_width}
 
-        cap_box = BBox(0, 0, cap_width, cap_height, self.grid.resolution)
-        self.set_size_from_bound_box(cap_top_layer, cap_box, round_up=True)
+        # get port locations
+        min_len = self.grid.get_min_length(port_layer, port_width, unit_mode=True)
+        port_ext = (min_len + top_w)
 
+        # set size
+        cap_width = int(round(cap_width / res))
+        cap_height = int(round(cap_height / res))
+        bnd_box = BBox(0, 0, cap_width, cap_height + 2 * port_ext, res, unit_mode=True)
+        self.set_size_from_bound_box(port_layer, bnd_box, round_up=True)
+        bnd_box = self.bound_box
+
+        # draw cap
+        cap_xl = bnd_box.xc_unit - cap_width // 2
+        cap_yb = bnd_box.yc_unit - cap_height // 2
+        cap_box = BBox(cap_xl, cap_yb, cap_xl + cap_width, cap_yb + cap_height, res, unit_mode=True)
         num_layer = cap_top_layer - cap_bot_layer + 1
-        cap_ports = self.add_mom_cap(self.bound_box, cap_bot_layer, num_layer, **cap_options)
+        cap_ports = self.add_mom_cap(cap_box, cap_bot_layer, num_layer, **cap_options)
 
         cp, cn = cap_ports[cap_top_layer]
         cp = cp[0]
         cn = cn[0]
-        port_layer = cap_top_layer + 1
         tidx = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
         port_tid = TrackID(port_layer, tidx, width=port_width)
         if cp.track_id.base_index < cn.track_id.base_index:
@@ -96,21 +116,22 @@ class MOMCapCore(TemplateBase):
             warr0, warr1 = cn, cp
             name0, name1 = 'minus', 'plus'
 
-        warr0 = self.connect_to_tracks(warr0, port_tid, min_len_mode=-1)
-        warr1 = self.connect_to_tracks(warr1, port_tid, min_len_mode=1)
-        port_len = warr0.upper - warr0.lower
-        self.add_res_metal_warr(port_layer, tidx, warr0.lower - port_len, warr0.lower, width=port_width)
-        self.add_res_metal_warr(port_layer, tidx, warr1.upper, warr1.upper + port_len, width=port_width)
-        warr0 = self.add_wires(port_layer, tidx, warr0.lower - 2 * port_len,
-                               warr0.lower - port_len, width=port_width)
-        warr1 = self.add_wires(port_layer, tidx, warr1.upper + port_len,
-                               warr1.upper + 2 * port_len, width=port_width)
+        warr0 = self.connect_to_tracks(warr0, port_tid)
+        warr1 = self.connect_to_tracks(warr1, port_tid)
+        min_len *= res
+        top_w *= res
+        self.add_res_metal_warr(port_layer, tidx, warr0.lower - min_len, warr0.lower, width=port_width)
+        self.add_res_metal_warr(port_layer, tidx, warr1.upper, warr1.upper + min_len, width=port_width)
+        warr0 = self.add_wires(port_layer, tidx, warr0.lower - min_len - top_w,
+                               warr0.lower - min_len, width=port_width)
+        warr1 = self.add_wires(port_layer, tidx, warr1.upper + min_len,
+                               warr1.upper + min_len + top_w, width=port_width)
 
         self.add_pin(name0, warr0, show=show_pins)
         self.add_pin(name1, warr1, show=show_pins)
 
-        res_w = self.grid.get_track_width(port_layer, port_width) * self.grid.layout_unit
-        res_l = port_len * self.grid.layout_unit
+        res_w = top_w * self.grid.layout_unit
+        res_l = min_len * self.grid.layout_unit
         self._sch_params = dict(
             res_w=res_w,
             res_l=res_l,

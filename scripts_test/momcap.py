@@ -5,7 +5,7 @@ import yaml
 from bag.core import BagProject
 from bag.layout import RoutingGrid, TemplateDB
 
-from analog_ec.layout.passives.capacitor import MOMCapCore
+from analog_ec.layout.passives.capacitor.momcap import MOMCapCore
 
 
 def make_tdb(prj, target_lib, specs):
