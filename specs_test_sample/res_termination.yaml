@@ -17,13 +17,12 @@ params:
   nser: 4
   npar: 4
   ndum: 1
-  direction: 'y'
+  port_layer: 5
   sub_w: 0
   sub_lch: 20.0e-9
   em_specs: {}
   show_pins: True
-  res_options:
-    min_tracks: [1, 1, 1, 1]
+  res_options: !!null
 
 em_params:
   res_targ: 50

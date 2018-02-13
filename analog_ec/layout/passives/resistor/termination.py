@@ -159,7 +159,7 @@ class TerminationCore(ResArrayBase):
                     base_idx = self.get_abs_track_index(next_layer, ndum, base_idx_rel)
                     tid = TrackID(next_layer, base_idx, width=next_w, num=npar, pitch=cur_p)
                     for warrs_idx in range(3):
-                        port_wires[warrs_idx] = self.connect_to_tracks(port_wires[warrs_idx], tid, min_len_mode=0)
+                        port_wires[warrs_idx] = [self.connect_to_tracks(port_wires[warrs_idx], tid, min_len_mode=0)]
             else:
                 # layer direction is the same.  Strap wires to current layer.
                 for warrs_idx in range(3):

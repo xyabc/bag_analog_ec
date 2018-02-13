@@ -7,7 +7,7 @@ import yaml
 from bag.core import BagProject
 from bag.layout import RoutingGrid, TemplateDB
 
-from analog_ec.layout.passives.resistor import Termination
+from analog_ec.layout.passives.resistor.termination import Termination
 
 
 def make_tdb(prj, target_lib, specs):
@@ -50,10 +50,11 @@ def generate_em(prj, specs):
     em_specs = em_params['em_specs']
     num_par, num_ser, w, l = tech_info.design_resistor(res_type, res_targ,
                                                        num_even=num_even, **em_specs)
-    params['nx'] = num_ser * 2
-    params['ny'] = num_par
+    params['nser'] = num_ser
+    params['npar'] = num_par
     params['l'] = l
     params['w'] = w
+    params['em_specs'] = em_specs
 
     pprint.pprint(params)
     temp_list = [temp_db.new_template(params=params, temp_cls=Termination, debug=False), ]
