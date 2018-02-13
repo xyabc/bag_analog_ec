@@ -53,6 +53,7 @@ class MOMCapCore(TemplateBase):
             port_width='port track width, in number of tracks.',
             show_pins='True to show pin labels.',
             cap_options='MOM cap layout options.',
+            sub_name='Substrate name.  Empty string to disable.',
         )
 
     @classmethod
@@ -62,6 +63,7 @@ class MOMCapCore(TemplateBase):
             port_layer=None,
             show_pins=False,
             cap_options=None,
+            sub_name='VSS',
         )
 
     def draw_layout(self):
@@ -73,6 +75,7 @@ class MOMCapCore(TemplateBase):
         port_width = self.params['port_width']
         show_pins = self.params['show_pins']
         cap_options = self.params['cap_options']
+        sub_name = self.params['sub_name']
 
         res = self.grid.resolution
 
@@ -142,6 +145,8 @@ class MOMCapCore(TemplateBase):
         res_w = top_w * self.grid.layout_unit
         res_l = res_len * self.grid.layout_unit
         self._sch_params = dict(
-            res_w=res_w,
-            res_l=res_l,
+            w=res_w,
+            l=res_l,
+            layer=port_layer,
+            sub_name=sub_name,
         )

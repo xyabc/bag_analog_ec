@@ -1,7 +1,7 @@
 impl_lib: 'AAAFOO_TEST_MOMCAP'
 impl_cell: 'MOMCAP'
-sch_lib: ''
-sch_cell: ''
+sch_lib: 'bag_analog_ec'
+sch_cell: 'cap_mom'
 
 routing_grid:
   layers: [4, 5]
@@ -17,3 +17,4 @@ params:
   port_width: 2
   show_pins: True
   cap_options: !!null
+  sub_name: 'VSS'

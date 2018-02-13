@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict
+from typing import Dict, Any
 
 import os
 import pkg_resources
@@ -35,9 +35,17 @@ class bag_analog_ec__cap_mom(Module):
             w='metal resistor width, in meters.',
             l='metal resistor length, in meters.',
             layer='metal resistor layer ID.',
+            sub_name='substrate name.  Empty string to disable'
         )
 
-    def design(self, w, l, layer):
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            sub_name='VSS',
+        )
+
+    def design(self, w, l, layer, sub_name):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
@@ -55,3 +63,11 @@ class bag_analog_ec__cap_mom(Module):
         """
         self.instances['XP'].design(w=w, l=l, layer=layer)
         self.instances['XN'].design(w=w, l=l, layer=layer)
+
+        if not sub_name:
+            # delete substrate pin
+            self.delete_instance('XSUPCONN')
+            self.remove_pin('VSS')
+        elif sub_name != 'VSS':
+            self.rename_pin('VSS', sub_name)
+            self.reconnect_instance_terminal('XSUPCONN', 'noConn', sub_name)
