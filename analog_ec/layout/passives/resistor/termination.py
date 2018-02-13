@@ -117,7 +117,7 @@ class TerminationCore(ResArrayBase):
         port_width = self.grid.get_min_track_width(port_layer, **em_specs)
 
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
-                        em_specs=div_em_specs, top_layer=port_layer, **res_options)
+                        em_specs=div_em_specs, top_layer=port_layer, connect_up=True, **res_options)
 
         dum_warrs = self._connect_dummies(direction, nx, ny, ndum)
 
