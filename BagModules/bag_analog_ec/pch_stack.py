@@ -71,15 +71,18 @@ class bag_analog_ec__pch_stack(Module):
         # array instances
         name_list = []
         term_list = []
-        # add stack transistors
-        for idx in range(stack):
-            name_list.append('%s%d<%d:0>' % (inst_name, idx, seg - 1))
-            cur_term = {}
-            if idx != stack - 1:
-                cur_term['S'] = 'mid%d<%d:0>' % (idx, seg - 1)
-            if idx != 0:
-                cur_term['D'] = 'mid%d<%d:0>' % (idx - 1, seg - 1)
-            term_list.append(cur_term)
+        if stack == 1:
+            self.instances[inst_name].design(w=w, l=l, nf=seg, intent=intent)
+        else:
+            # add stack transistors
+            for idx in range(stack):
+                name_list.append('%s%d<%d:0>' % (inst_name, idx, seg - 1))
+                cur_term = {}
+                if idx != stack - 1:
+                    cur_term['S'] = 'mid%d<%d:0>' % (idx, seg - 1)
+                if idx != 0:
+                    cur_term['D'] = 'mid%d<%d:0>' % (idx - 1, seg - 1)
+                term_list.append(cur_term)
 
-        self.instances[inst_name].design(w=w, l=l, nf=1, intent=intent)
-        self.array_instance(inst_name, name_list, term_list=term_list)
+            self.instances[inst_name].design(w=w, l=l, nf=1, intent=intent)
+            self.array_instance(inst_name, name_list, term_list=term_list)
