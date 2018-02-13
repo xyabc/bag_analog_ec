@@ -86,10 +86,14 @@ class MOMCapCore(TemplateBase):
         elif 'port_widths' in cap_options:
             cap_options = cap_options.copy()
             cap_options['port_widths'] = {cap_top_layer: cap_port_width}
+        bot_w = self.grid.get_track_width(cap_top_layer, cap_port_width, unit_mode=True)
 
         # get port locations
         min_len = self.grid.get_min_length(port_layer, port_width, unit_mode=True)
-        port_ext = (min_len + top_w)
+        via_ext = self.grid.get_via_extensions(cap_top_layer, cap_port_width, port_width, unit_mode=True)[1]
+        res_len = top_w
+        port_len = max(top_w, min_len - 2 * via_ext - bot_w - res_len)
+        port_ext = res_len + port_len
 
         # set size
         cap_width = int(round(cap_width / res))
@@ -123,20 +127,20 @@ class MOMCapCore(TemplateBase):
 
         warr0 = self.connect_to_tracks(warr0, port_tid)
         warr1 = self.connect_to_tracks(warr1, port_tid)
-        min_len *= res
-        top_w *= res
-        self.add_res_metal_warr(port_layer, tidx, warr0.lower - min_len, warr0.lower, width=port_width)
-        self.add_res_metal_warr(port_layer, tidx, warr1.upper, warr1.upper + min_len, width=port_width)
-        warr0 = self.add_wires(port_layer, tidx, warr0.lower - min_len - top_w,
-                               warr0.lower - min_len, width=port_width)
-        warr1 = self.add_wires(port_layer, tidx, warr1.upper + min_len,
-                               warr1.upper + min_len + top_w, width=port_width)
+        res_len *= res
+        port_len *= res
+        self.add_res_metal_warr(port_layer, tidx, warr0.lower - res_len, warr0.lower, width=port_width)
+        self.add_res_metal_warr(port_layer, tidx, warr1.upper, warr1.upper + res_len, width=port_width)
+        warr0 = self.add_wires(port_layer, tidx, warr0.lower - res_len - port_len,
+                               warr0.lower - res_len, width=port_width)
+        warr1 = self.add_wires(port_layer, tidx, warr1.upper + res_len,
+                               warr1.upper + res_len + port_len, width=port_width)
 
         self.add_pin(name0, warr0, show=show_pins)
         self.add_pin(name1, warr1, show=show_pins)
 
         res_w = top_w * self.grid.layout_unit
-        res_l = min_len * self.grid.layout_unit
+        res_l = res_len * self.grid.layout_unit
         self._sch_params = dict(
             res_w=res_w,
             res_l=res_l,
