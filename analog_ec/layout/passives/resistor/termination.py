@@ -51,7 +51,7 @@ class TerminationCore(ResArrayBase):
             nser='number of resistors in series in a branch.',
             npar='number of branches in parallel.',
             ndum='number of dummy resistors.',
-            direction='signal direction.  Either "x" or "y"',
+            port_layer='The port layer.',
             em_specs='EM specifications for the termination network.',
             show_pins='True to show pins.',
             res_options='Configuration dictionary for ResArrayBase.',
@@ -61,7 +61,6 @@ class TerminationCore(ResArrayBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            direction='y',
             em_specs=None,
             show_pins=True,
             res_options=None,
@@ -76,24 +75,32 @@ class TerminationCore(ResArrayBase):
         nser = self.params['nser']
         npar = self.params['npar']
         ndum = self.params['ndum']
-        direction = self.params['direction']
+        port_layer = self.params['port_layer']
         em_specs = self.params['em_specs']
         show_pins = self.params['show_pins']
         res_options = self.params['res_options']
+
+        bot_layer_id = self.bot_layer_id
+        if port_layer < bot_layer_id + 2:
+            raise ValueError('port_layer = %d must be at least %d' % (port_layer, bot_layer_id + 2))
 
         if em_specs is None:
             em_specs = {}
         if res_options is None:
             res_options = {}
+        else:
+            res_options = res_options.copy()
+            del res_options['min_tracks']
 
+        direction = self.grid.get_direction(port_layer)
+        min_tracks = [1] * (port_layer - bot_layer_id)
         if direction == 'x':
             nx = npar + 2 * ndum
             ny = 2 * (nser + ndum)
-            min_tracks = res_options.pop('min_tracks', [1, 2, 1])
+            min_tracks[1] = 2
         else:
             nx = 2 * (nser + ndum)
             ny = npar + 2 * ndum
-            min_tracks = res_options.pop('min_tracks', [1, 1])
 
         div_em_specs = em_specs.copy()
         for key in ('idc', 'iac_rms', 'iac_peak'):
@@ -102,8 +109,10 @@ class TerminationCore(ResArrayBase):
             else:
                 div_em_specs[key] = 0.0
 
-        self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny,
-                        min_tracks=min_tracks, em_specs=div_em_specs, **res_options)
+        port_width = self.grid.get_min_track_width(port_layer, **em_specs)
+
+        self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
+                        em_specs=div_em_specs, top_layer=port_layer, **res_options)
 
         dum_warrs = self._connect_dummies(direction, nx, ny, ndum)
 
@@ -112,18 +121,20 @@ class TerminationCore(ResArrayBase):
         else:
             lay_start, port_wires = self._connect_vertical(nx, ny, ndum)
 
-        self._connect_up(direction, lay_start, ndum, npar, port_wires, dum_warrs, show_pins)
+        self._connect_up(port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins)
 
-    def _connect_up(self, direction, lay_start, ndum, npar, port_wires, dum_warrs, show_pins):
+    def _connect_up(self, port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins):
+        direction = self.grid.get_direction(port_layer)
         last_dir = 'y' if direction == 'x' else 'x'
-        lay_offset = self.bot_layer_id
-        for lay_idx in range(lay_start, len(self.w_tracks)):
-            cur_lay = lay_idx + lay_offset
-            cur_w = self.w_tracks[lay_idx]
-            cur_dir = self.grid.get_direction(cur_lay)
-            if cur_dir != last_dir:
+        for next_layer in range(lay_start, port_layer + 1):
+            if next_layer == port_layer:
+                next_w = port_width
+            else:
+                next_w = self.w_tracks[next_layer - self.bot_layer_id]
+            next_dir = self.grid.get_direction(next_layer)
+            if next_layer != last_dir:
                 # layer direction is orthogonal
-                if cur_dir == direction:
+                if next_dir == direction:
                     # connect all wires in last layer to one wire
                     for warrs_idx in range(3):
                         cur_warrs = port_wires[warrs_idx]
@@ -132,32 +143,32 @@ class TerminationCore(ResArrayBase):
                         else:
                             mid_coord = cur_warrs[0].middle
                         mid_coord_unit = int(round(mid_coord / self.grid.resolution))
-                        tidx = self.grid.coord_to_nearest_track(cur_lay, mid_coord_unit,
+                        tidx = self.grid.coord_to_nearest_track(next_layer, mid_coord_unit,
                                                                 half_track=True, unit_mode=True)
-                        tid = TrackID(cur_lay, tidx, width=cur_w)
-                        if warrs_idx == 1 and lay_idx == lay_start:
+                        tid = TrackID(next_layer, tidx, width=next_w)
+                        if warrs_idx == 1 and next_layer == lay_start:
                             # connect dummy wires to common mode
                             cur_warrs = cur_warrs + dum_warrs
                         port_wires[warrs_idx] = [self.connect_to_tracks(cur_warrs, tid)]
                 else:
                     # draw one wire in middle of each row, then connect last wire to it
                     # this way we distribute currents evenly.
-                    cur_p = self.num_tracks[lay_idx]
+                    cur_p = self.num_tracks[next_layer - self.bot_layer_id]
                     # relative base index.  Round down if we have half-integer number of tracks
                     base_idx_rel = (int(round(cur_p * 2)) // 2 - 1) / 2
-                    base_idx = self.get_abs_track_index(cur_lay, ndum, base_idx_rel)
-                    tid = TrackID(cur_lay, base_idx, width=cur_w, num=npar, pitch=cur_p)
+                    base_idx = self.get_abs_track_index(next_layer, ndum, base_idx_rel)
+                    tid = TrackID(next_layer, base_idx, width=next_w, num=npar, pitch=cur_p)
                     for warrs_idx in range(3):
                         port_wires[warrs_idx] = self.connect_to_tracks(port_wires[warrs_idx], tid, min_len_mode=0)
             else:
                 # layer direction is the same.  Strap wires to current layer.
                 for warrs_idx in range(3):
                     cur_warrs = port_wires[warrs_idx]
-                    new_warrs = [self.strap_wires(warr, cur_lay, tr_w_list=[cur_w], min_len_mode_list=[0])
+                    new_warrs = [self.strap_wires(warr, next_layer, tr_w_list=[next_w], min_len_mode_list=[0])
                                  for warr in cur_warrs]
                     port_wires[warrs_idx] = new_warrs
 
-            last_dir = cur_dir
+            last_dir = next_dir
 
         self.add_pin('inp', port_wires[0], show=show_pins)
         self.add_pin('inn', port_wires[2], show=show_pins)
@@ -194,7 +205,7 @@ class TerminationCore(ResArrayBase):
                 if row_idx == (ny // 2) - 1:
                     port_wires[1].append(mid_wire)
 
-        return 2, port_wires
+        return self.bot_layer_id + 2, port_wires
 
     def _connect_vertical(self, nx, ny, ndum):
         # connect series row resistors
@@ -212,7 +223,7 @@ class TerminationCore(ResArrayBase):
                 if col_idx == (nx // 2) - 1:
                     port_wires[1].append(mid_wire[0])
 
-        return 1, port_wires
+        return self.bot_layer_id + 1, port_wires
 
     def _connect_dummies(self, direction, nx, ny, ndum):
         # type: (str, int, int, int) -> List[WireArray]
@@ -312,7 +323,7 @@ class Termination(TemplateBase):
             nser='number of resistors in series in a branch.',
             npar='number of branches in parallel.',
             ndum='number of dummy resistors.',
-            direction='signal direction.  Either "x" or "y"',
+            port_layer='the port layer.',
             sub_w='substrate contact width. Set to 0 to disable drawing substrate contact.',
             sub_lch='substrate contact channel length.',
             em_specs='EM specifications for the termination network.',
@@ -324,7 +335,6 @@ class Termination(TemplateBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            direction='y',
             em_specs=None,
             show_pins=True,
             res_options=None,
@@ -340,11 +350,9 @@ class Termination(TemplateBase):
         show_pins = self.params['show_pins']
         res_options = self.params['res_options']
 
-        # force TerminationCore to be quantized
+        if res_options is None:
+            res_options = {}
         res_type = res_options.get('res_type', 'standard')
-        grid_type = res_options.get('grid_type', 'standard')
-        top_layer = ResArrayBase.get_top_layer(self.grid.tech_info, grid_type=grid_type) + 1
-        res_params['top_layer'] = top_layer
 
         res_master = self.new_template(params=res_params, temp_cls=TerminationCore)
         if sub_w == 0:
