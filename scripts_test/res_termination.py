@@ -22,9 +22,11 @@ def make_tdb(prj, target_lib, specs):
     return tdb
 
 
-def generate(prj, specs):
+def generate(prj, specs, gen_sch=False, run_lvs=False):
     impl_lib = specs['impl_lib']
     impl_cell = specs['impl_cell']
+    sch_lib = specs['sch_lib']
+    sch_cell = specs['sch_cell']
     params = specs['params']
 
     temp_db = make_tdb(prj, impl_lib, specs)
@@ -34,10 +36,26 @@ def generate(prj, specs):
     temp_db.batch_layout(prj, [template], [impl_cell])
     print('done')
 
+    if gen_sch:
+        print('creating schematics')
 
-def generate_em(prj, specs):
+        dsn = prj.create_design_module(sch_lib, sch_cell)
+        dsn.design(**template.sch_params)
+        dsn.implement_design(impl_lib, top_cell_name=impl_cell)
+        print('schematic done.')
+
+        if run_lvs:
+            print('running lvs')
+            lvs_passed, lvs_log = prj.run_lvs(impl_lib, impl_cell)
+            print('LVS log: %s' % lvs_log)
+            if lvs_passed:
+                print('LVS passed!')
+            else:
+                print('LVS failed...')
+
+
+def generate_em(prj, specs, gen_sch=False, run_lvs=False):
     impl_lib = specs['impl_lib']
-    impl_cell = specs['impl_cell']
     params = specs['params'].copy()
     em_params = specs['em_params']
 
@@ -55,12 +73,10 @@ def generate_em(prj, specs):
     params['l'] = l
     params['w'] = w
     params['em_specs'] = em_specs
-
     pprint.pprint(params)
-    temp_list = [temp_db.new_template(params=params, temp_cls=Termination, debug=False), ]
-    print('creating layout')
-    temp_db.batch_layout(prj, temp_list, [impl_cell])
-    print('done')
+
+    specs['params'] = params
+    generate(prj, specs, gen_sch=gen_sch, run_lvs=run_lvs)
 
 
 if __name__ == '__main__':
@@ -77,5 +93,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    generate(bprj, block_specs)
-    # generate_em(bprj, block_specs)
+    generate(bprj, block_specs, gen_sch=False, run_lvs=False)
+    # generate_em(bprj, block_specs, gen_sch=False, run_lvs=False)

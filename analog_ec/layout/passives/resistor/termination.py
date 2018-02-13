@@ -39,6 +39,11 @@ class TerminationCore(ResArrayBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         ResArrayBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -122,6 +127,19 @@ class TerminationCore(ResArrayBase):
             lay_start, port_wires = self._connect_vertical(nx, ny, ndum)
 
         self._connect_up(port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins)
+
+        # set schematic parameters
+        ndum_tot = 2 * ndum * (nx + ny - 2 * ndum)
+        res_type = res_options.get('res_type', 'standard')
+        self._sch_params = dict(
+            l=l,
+            w=w,
+            intent=res_type,
+            nser=nser,
+            npar=npar,
+            ndum=ndum_tot,
+            sub_name='',
+        )
 
     def _connect_up(self, port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins):
         direction = self.grid.get_direction(port_layer)
@@ -311,6 +329,11 @@ class Termination(TemplateBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -355,6 +378,8 @@ class Termination(TemplateBase):
         res_type = res_options.get('res_type', 'standard')
 
         res_master = self.new_template(params=res_params, temp_cls=TerminationCore)
+        self._sch_params = res_master.sch_params.copy()
+
         if sub_w == 0:
             # do not draw substrate contact.
             inst = self.add_instance(res_master, inst_name='XRES', loc=(0, 0), unit_mode=True)
@@ -405,6 +430,8 @@ class Termination(TemplateBase):
 
             for port_name in res_inst.port_names_iter():
                 self.reexport(res_inst.get_port(port_name), show=show_pins)
+
+            self._sch_params['sub_name'] = port_name
 
 
 class TerminationCMCore(ResArrayBase):

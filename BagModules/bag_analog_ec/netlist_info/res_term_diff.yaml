@@ -1,0 +1,68 @@
+lib_name: bag_analog_ec
+cell_name: res_term_diff
+pins: [ "inp", "inn", "incm", "VSS" ]
+instances:
+  RDUM:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "incm"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "incm"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  RN:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "incm"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "inn"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  RP:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "inp"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "incm"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  PIN3:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
