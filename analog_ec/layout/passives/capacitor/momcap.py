@@ -50,7 +50,9 @@ class MOMCapCore(TemplateBase):
             cap_top_layer='MOM cap top layer.',
             cap_width='MOM cap width, in layout units.',
             cap_height='MOM cap height, in layout units.',
+            cap_margin='margin between cap and boundary, in layout units.',
             port_width='port track width, in number of tracks.',
+            port_idx='port track index.  If None, defaults to center.',
             show_pins='True to show pin labels.',
             cap_options='MOM cap layout options.',
             sub_name='Substrate name.  Empty string to disable.',
@@ -60,7 +62,9 @@ class MOMCapCore(TemplateBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            port_layer=None,
+            cap_margin=0,
+            port_width=1,
+            port_idx=None,
             show_pins=False,
             cap_options=None,
             sub_name='VSS',
@@ -72,7 +76,9 @@ class MOMCapCore(TemplateBase):
         cap_top_layer = self.params['cap_top_layer']
         cap_width = self.params['cap_width']
         cap_height = self.params['cap_height']
+        cap_margin = self.params['cap_margin']
         port_width = self.params['port_width']
+        port_idx = self.params['port_idx']
         show_pins = self.params['show_pins']
         cap_options = self.params['cap_options']
         sub_name = self.params['sub_name']
@@ -81,7 +87,6 @@ class MOMCapCore(TemplateBase):
 
         # setup capacitor options
         port_layer = cap_top_layer + 1
-        port_dir = self.grid.get_direction(port_layer)
         top_w = self.grid.get_track_width(port_layer, port_width, unit_mode=True)
         cap_port_width = self.grid.get_min_track_width(cap_top_layer, top_w=top_w, unit_mode=True)
         if cap_options is None:
@@ -96,20 +101,18 @@ class MOMCapCore(TemplateBase):
         via_ext = self.grid.get_via_extensions(cap_top_layer, cap_port_width, port_width, unit_mode=True)[1]
         res_len = top_w
         port_len = max(top_w, min_len - 2 * via_ext - bot_w - res_len)
-        port_ext = res_len + port_len
 
         # set size
         cap_width = int(round(cap_width / res))
         cap_height = int(round(cap_height / res))
-        if port_dir == 'y':
-            bnd_box = BBox(0, 0, cap_width, cap_height + 2 * port_ext, res, unit_mode=True)
-        else:
-            bnd_box = BBox(0, 0, cap_width + 2 * port_ext, cap_height, res, unit_mode=True)
-
+        cap_margin = int(round(cap_margin / res))
+        bnd_box = BBox(0, 0, cap_width, cap_height, res, unit_mode=True)
         self.set_size_from_bound_box(port_layer, bnd_box, round_up=True)
         bnd_box = self.bound_box
 
         # draw cap
+        cap_width = bnd_box.width_unit - 2 * cap_margin
+        cap_height = bnd_box.height_unit - 2 * cap_margin
         cap_xl = bnd_box.xc_unit - cap_width // 2
         cap_yb = bnd_box.yc_unit - cap_height // 2
         cap_box = BBox(cap_xl, cap_yb, cap_xl + cap_width, cap_yb + cap_height, res, unit_mode=True)
@@ -119,8 +122,9 @@ class MOMCapCore(TemplateBase):
         cp, cn = cap_ports[cap_top_layer]
         cp = cp[0]
         cn = cn[0]
-        tidx = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
-        port_tid = TrackID(port_layer, tidx, width=port_width)
+        if port_idx is None:
+            port_idx = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
+        port_tid = TrackID(port_layer, port_idx, width=port_width)
         if cp.track_id.base_index < cn.track_id.base_index:
             warr0, warr1 = cp, cn
             name0, name1 = 'plus', 'minus'
@@ -132,11 +136,11 @@ class MOMCapCore(TemplateBase):
         warr1 = self.connect_to_tracks(warr1, port_tid)
         res_len *= res
         port_len *= res
-        self.add_res_metal_warr(port_layer, tidx, warr0.lower - res_len, warr0.lower, width=port_width)
-        self.add_res_metal_warr(port_layer, tidx, warr1.upper, warr1.upper + res_len, width=port_width)
-        warr0 = self.add_wires(port_layer, tidx, warr0.lower - res_len - port_len,
+        self.add_res_metal_warr(port_layer, port_idx, warr0.lower - res_len, warr0.lower, width=port_width)
+        self.add_res_metal_warr(port_layer, port_idx, warr1.upper, warr1.upper + res_len, width=port_width)
+        warr0 = self.add_wires(port_layer, port_idx, warr0.lower - res_len - port_len,
                                warr0.lower - res_len, width=port_width)
-        warr1 = self.add_wires(port_layer, tidx, warr1.upper + res_len,
+        warr1 = self.add_wires(port_layer, port_idx, warr1.upper + res_len,
                                warr1.upper + res_len + port_len, width=port_width)
 
         self.add_pin(name0, warr0, show=show_pins)

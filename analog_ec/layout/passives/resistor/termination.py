@@ -188,8 +188,8 @@ class TerminationCore(ResArrayBase):
 
             last_dir = next_dir
 
-        self.add_pin('inp', port_wires[0], show=show_pins)
-        self.add_pin('inn', port_wires[2], show=show_pins)
+        self.add_pin('inp', port_wires[2], show=show_pins)
+        self.add_pin('inn', port_wires[0], show=show_pins)
         self.add_pin('incm', port_wires[1], show=show_pins)
 
     def _connect_horizontal(self, nx, ny, ndum):
