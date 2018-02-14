@@ -455,6 +455,11 @@ class TerminationCMCore(ResArrayBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         ResArrayBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_default_param_values(cls):
@@ -524,6 +529,19 @@ class TerminationCMCore(ResArrayBase):
             tidx = self.grid.coord_to_nearest_track(hm_layer, warr.middle, half_track=True, mode=mode)
             tid = TrackID(hm_layer, tidx)
             self.add_pin(name, self.connect_to_tracks(warr, tid, min_len_mode=0), show=show_pins)
+
+        # set schematic parameters
+        ndum_tot = 2 * ndum * (nx + ny - 2 * ndum)
+        res_type = res_options.get('res_type', 'standard')
+        self._sch_params = dict(
+            l=l,
+            w=w,
+            intent=res_type,
+            nser=nres * nseg,
+            npar=1,
+            ndum=ndum_tot,
+            sub_name='',
+        )
 
     def _connect_res(self, nres, nseg, ndum):
         lay_offset = self.bot_layer_id
