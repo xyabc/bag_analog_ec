@@ -42,7 +42,7 @@ class bag_analog_ec__diffamp_self_biased(Module):
         # design main transistors
         tran_info_list = [('XNTAIL1', 'ntail'), ('XNTAIL2', 'ntail'),
                           ('XNINP', 'nin'), ('XNINN', 'nin'),
-                          ('XPINP', 'pin'), ('XPINN', 'nin'),
+                          ('XPINP', 'pin'), ('XPINN', 'pin'),
                           ('XPTAIL1', 'ptail'), ('XPTAIL2', 'ptail'),
                           ]
 
