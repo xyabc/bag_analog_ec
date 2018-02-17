@@ -108,15 +108,24 @@ class DiffAmpSelfBiased(AnalogBase):
         # error checking
         if fg_pin % 2 != 0 or fg_nin % 2 != 0 or fg_ptail % 2 != 0 or fg_ntail % 2 != 0:
             raise ValueError('Only even number of fingers are supported.')
+        if (fg_pin - fg_nin) % 4 != 0:
+            raise ValueError('This code now only works if fg_pin and fg_nin differ by '
+                             'multiples of 4.')
 
         fg_single_in = max(fg_pin, fg_nin)
         fg_single = max(fg_ptail, fg_ntail, fg_pin, fg_nin)
         in_mid_idx = ndum + fg_single - fg_single_in // 2
         fg_tot = 2 * (fg_single + ndum) + min_fg_sep
-        ndum_ptail = ndum + fg_single - fg_ptail
-        ndum_ntail = ndum + fg_single - fg_ntail
         ndum_pin = in_mid_idx - fg_pin // 2
         ndum_nin = in_mid_idx - fg_nin // 2
+        if fg_ntail <= fg_nin:
+            ndum_ntail = ndum_nin + fg_nin - fg_ntail
+        else:
+            ndum_ntail = min(ndum_nin, ndum + fg_single - fg_ntail)
+        if fg_ptail <= fg_pin:
+            ndum_ptail = ndum_pin + fg_pin - fg_ptail
+        else:
+            ndum_ptail = min(ndum_pin, ndum + fg_single - fg_ptail)
 
         # get width/threshold/orientation info
         nw_list = [w_dict['ntail'], w_dict['nin']]
@@ -170,7 +179,7 @@ class DiffAmpSelfBiased(AnalogBase):
                                   s_net=s_netl, d_net=d_netl)
         ninr = self.draw_mos_conn('nch', 1, fg_tot - ndum_nin - fg_nin, fg_nin, sdir, ddir,
                                   s_net=s_netr, d_net=d_netr)
-        if (ndum_pin - ndum_ntail) % 2 == 1:
+        if (ndum_pin - ndum_ptail) % 2 == 1:
             tail_pin_port, out_pin_port = 'd', 's'
             sdir, ddir = 0, 2
             s_netl, s_netr, d_netl, d_netr = 'outn', 'outp', 'ptail', 'ptail'

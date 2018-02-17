@@ -1,7 +1,9 @@
-vstar: 150.0e-3
+vstarn: 150.0e-3
+vstarp: 150.0e-3
 vincm: 0.8
 voutcm: 0.6
 vdd: 1.2
+fg_nin: 10
 
 nch:
   spec_file: 'specs_mos_char/nch_w4.yaml'
