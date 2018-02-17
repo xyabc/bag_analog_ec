@@ -1,0 +1,18 @@
+vstar: 150.0e-3
+vincm: 0.8
+voutcm: 0.6
+vdd: 1.2
+
+nch:
+  spec_file: 'specs_mos_char/nch_w4.yaml'
+  interp_method: 'spline'
+  sim_env: 'tt'
+  layout_kwargs:
+    intent: 'standard'
+
+pch:
+  spec_file: 'specs_mos_char/pch_w4.yaml'
+  interp_method: 'spline'
+  sim_env: 'tt'
+  layout_kwargs:
+    intent: 'standard'
