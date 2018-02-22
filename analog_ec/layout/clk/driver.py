@@ -199,7 +199,7 @@ class ClkAmpReset(TemplateBase):
         return dict(
             amp_params='clock amplifier parameters',
             nor_params='nor amplifier parameters.',
-            dig_config='digital cells configuration file.',
+            dig_params='digital block parameters.',
             show_pins='True to show pins.',
         )
 
@@ -222,7 +222,7 @@ class ClkAmpReset(TemplateBase):
     def draw_layout(self):
         amp_params = deepcopy(self.params['amp_params'])
         nor_params = deepcopy(self.params['nor_params'])
-        dig_config = self.params['dig_config']
+        dig_params = self.params['dig_params'].copy()
         show_pins = self.params['show_pins']
 
         # get track information dictionary for amplifier
@@ -248,11 +248,8 @@ class ClkAmpReset(TemplateBase):
         amp_master = self.new_template(params=amp_params, temp_cls=ClkInvAmp)
         nor_params['show_pins'] = False
         nor_master = self.new_template(params=nor_params, temp_cls=NorAmp)
-        dig_params = dict(
-            config_file=dig_config,
-            top_layer=amp_master.top_layer,
-            show_pins=show_pins,
-        )
+        dig_params['top_layer'] = amp_master.top_layer
+        dig_params['show_pins'] = False
         dig_master = self.new_template(params=dig_params, temp_cls=ClkReset)
 
         # place blocks
