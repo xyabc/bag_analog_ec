@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+"""This class contains top level integration classes for building a clock receiver."""
+
 from typing import TYPE_CHECKING, Dict, Set, Any
 
 from bag.layout.util import BBox
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class ClkInvAmp(TemplateBase):
-    """one data path of DDR burst mode RX core.
+    """An AC-coupled clock receiver implemented with psuedo-differential inverters with resistor feedback.
 
     Parameters
     ----------
@@ -29,18 +31,19 @@ class ClkInvAmp(TemplateBase):
         the parameter values.
     used_names : Set[str]
         a set of already used cell names.
-    **kwargs
+    **kwargs :
         dictionary of optional parameters.  See documentation of
         :class:`bag.layout.template.TemplateBase` for details.
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
@@ -154,8 +157,8 @@ class ClkInvAmp(TemplateBase):
             self.reexport(amp.get_port('VSS'), show=show_pins)
 
 
-class GatedClockRx(TemplateBase):
-    """one data path of DDR burst mode RX core.
+class ClkAmpReset(TemplateBase):
+    """An AC-coupled clock receiver with reset and deterministic startup.
 
     Parameters
     ----------
@@ -167,32 +170,35 @@ class GatedClockRx(TemplateBase):
         the parameter values.
     used_names : Set[str]
         a set of already used cell names.
-    **kwargs
+    **kwargs :
         dictionary of optional parameters.  See documentation of
         :class:`bag.layout.template.TemplateBase` for details.
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
-        super(GatedClockRx, self).__init__(temp_db, lib_name, params, used_names, **kwargs)
-        self.inv_num_fingers = None
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        # type: () -> Dict[str, Any]
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
-            clkrx_params='clkrx parameters',
-            nor_params='nor parameters.',
-            io_width_ntr='flop io wire width.',
+            amp_params='clock amplifier parameters',
+            nor_params='nor amplifier parameters.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
@@ -455,5 +461,3 @@ class GatedClockRx(TemplateBase):
         self.add_pin('CLKN_PAD', clkrx_in_bot)
 
         self.add_pin('RST', warr_en_vert)
-
-        self.num_transistors_row = nor_master.num_transistors_row

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+"""This class contains ResArrayBase subclasses needed to build a clock receiver."""
+
 from typing import TYPE_CHECKING, Dict, Set, Any
 
 from bag.layout.routing import TrackID

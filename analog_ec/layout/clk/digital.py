@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+"""This class contains StdCellBase subclasses needed to build a clock receiver."""
+
 from typing import TYPE_CHECKING, Dict, Set, Any
 
 from bag.layout.digital import StdCellTemplate, StdCellBase
@@ -9,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class Flop(StdCellBase):
-    """A row of retiming latch.
+    """A wrapper around a single D flip-flop.
 
     Parameters
     ----------
@@ -27,21 +29,12 @@ class Flop(StdCellBase):
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             config_file='Standard cell configuration file.',
         )

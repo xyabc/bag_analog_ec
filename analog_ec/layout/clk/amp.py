@@ -1,40 +1,48 @@
 # -*- coding: utf-8 -*-
 
+"""This module contains AnalogBase subclasses needed to build a clock receiver."""
+
+from typing import TYPE_CHECKING, Dict, Set, Any
+
 from bag.layout.routing import TrackManager
 
 from abs_templates_ec.analog_core.base import AnalogBase, AnalogBaseInfo
 
+if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
+
 
 class InvAmp(AnalogBase):
-    """A differential NMOS passgate track-and-hold circuit with clock driver.
-
-    This template is mainly used for ADC purposes.
+    """An inverter amplifier.
 
     Parameters
     ----------
-    temp_db : :class:`bag.layout.template.TemplateDB`
+    temp_db : TemplateDB
             the template database.
     lib_name : str
         the layout library name.
-    params : dict[str, any]
+    params : Dict[str, Any]
         the parameter values.
-    used_names : set[str]
+    used_names : Set[str]
         a set of already used cell names.
-    kwargs : dict[str, any]
+    **kwargs :
         dictionary of optional parameters.  See documentation of
         :class:`bag.layout.template.TemplateBase` for details.
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         AnalogBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
     def get_params_info(cls):
+        # type: () -> Dict[str, str]
         return dict(
             lch='channel length, in meters.',
             ptap_w='NMOS substrate width, in meters/number of fins.',
@@ -51,6 +59,7 @@ class InvAmp(AnalogBase):
 
     @classmethod
     def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
         return dict(
             show_pins=False,
             top_layer=None,
@@ -144,35 +153,36 @@ class InvAmp(AnalogBase):
 
 
 class NorAmp(AnalogBase):
-    """A differential NMOS passgate track-and-hold circuit with clock driver.
-
-    This template is mainly used for ADC purposes.
+    """An amplifier with enable signal implemented with a NOR gate.
 
     Parameters
     ----------
-    temp_db : :class:`bag.layout.template.TemplateDB`
+    temp_db : TemplateDB
             the template database.
     lib_name : str
         the layout library name.
-    params : dict[str, any]
+    params : Dict[str, Any]
         the parameter values.
-    used_names : set[str]
+    used_names : Set[str]
         a set of already used cell names.
-    kwargs : dict[str, any]
+    **kwargs :
         dictionary of optional parameters.  See documentation of
         :class:`bag.layout.template.TemplateBase` for details.
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         AnalogBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
     def get_params_info(cls):
+        # type: () -> Dict[str, str]
         return dict(
             lch='channel length, in meters.',
             ptap_w='NMOS substrate width, in meters/number of fins.',
@@ -189,6 +199,7 @@ class NorAmp(AnalogBase):
 
     @classmethod
     def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
         return dict(
             show_pins=False,
             top_layer=None,
