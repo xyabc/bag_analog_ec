@@ -181,9 +181,9 @@ class ClkReset(StdCellBase):
         vdd_list = [self.connect_to_tracks(vdd_warrs, TrackID(hm_layer, ploc_list[2], width=hm_w_sup)),
                     self.connect_to_tracks(vdd_warrs, TrackID(hm_layer, nloc_list[0], width=hm_w_sup))]
 
-        _, sup_loc_list = tr_manager.place_wires(vm_layer, ['sup', 'sup', 'clk'])
-        vdd_idx = sup_loc_list[0] + clk_tidx - sup_loc_list[2]
-        vss_idx = sup_loc_list[1] + clk_tidx - sup_loc_list[2]
+        _, sup_loc_list = tr_manager.place_wires(vm_layer, ['clk', 'sup', 'sup'])
+        vdd_idx = sup_loc_list[2] + clk_tidx - sup_loc_list[0]
+        vss_idx = sup_loc_list[1] + clk_tidx - sup_loc_list[0]
         vss = self.connect_to_tracks(vss_list, TrackID(vm_layer, vss_idx, width=vm_w_sup))
         vdd = self.connect_to_tracks(vdd_list, TrackID(vm_layer, vdd_idx, width=vm_w_sup))
 

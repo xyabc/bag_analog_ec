@@ -261,3 +261,48 @@ class ClkAmpReset(TemplateBase):
         norn = self.add_instance(nor_master, 'XNORN', loc=(x_nor, y_ampn), unit_mode=True)
         norp = self.add_instance(nor_master, 'XNORP', loc=(x_nor, y_ampp), orient='MX', unit_mode=True)
         dig = self.add_instance(dig_master, 'XDIG', loc=(x_nor, y_dig), unit_mode=True)
+
+        # connect supplies
+        vdd_list = amp_inst.get_all_port_pins('VDD')
+        vss_list = amp_inst.get_all_port_pins('VSS')
+        vdd_list.extend(norp.get_all_port_pins('VDD'))
+        vdd_list.extend(norn.get_all_port_pins('VDD'))
+        vss_list.extend(norp.get_all_port_pins('VSS'))
+        vss_list.extend(norn.get_all_port_pins('VSS'))
+        vdd_list = self.connect_wires(vdd_list)
+        vss_list = self.connect_wires(vss_list)
+        vm_vdd = dig.get_all_port_pins('VDD')[0]
+        vm_vss = dig.get_all_port_pins('VSS')[0]
+        self.connect_to_tracks(vdd_list, vm_vdd.track_id)
+        self.connect_to_tracks(vss_list, vm_vss.track_id)
+        self.add_pin('VDD', vdd_list, show=show_pins)
+        self.add_pin('VSS', vss_list, show=show_pins)
+
+        # connect clocks
+        amp_outp = amp_inst.get_all_port_pins('outp')[0]
+        nor_inp = norp.get_all_port_pins('in')[0]
+        amp_outn = amp_inst.get_all_port_pins('outn')[0]
+        nor_inn = norn.get_all_port_pins('in')[0]
+        self.connect_wires([amp_outp, nor_inp])
+        self.connect_wires([amp_outn, nor_inn])
+        nor_outp = norp.get_all_port_pins('out')[0]
+        nor_outn = norn.get_all_port_pins('out')[0]
+        clkp_dig = dig.get_all_port_pins('clkp')[0]
+        clkn_dig = dig.get_all_port_pins('clkn')[0]
+        self.connect_to_tracks(nor_outp, clkp_dig.track_id, track_lower=clkp_dig.lower)
+        self.connect_to_tracks(nor_outn, clkn_dig.track_id, track_upper=clkn_dig.upper)
+        self.add_pin('clkp', nor_outp, show=show_pins)
+        self.add_pin('clkn', nor_outn, show=show_pins)
+
+        # connect enables
+        enp = norp.get_all_port_pins('en')[0]
+        enn = norn.get_all_port_pins('en')[0]
+        enp_dig = dig.get_all_port_pins('enp')[0]
+        enn_dig = dig.get_all_port_pins('enn')[0]
+        self.connect_to_tracks(enp, enp_dig.track_id, track_lower=enp_dig.lower)
+        self.connect_to_tracks(enn, enn_dig.track_id, track_upper=enn_dig.lower)
+
+        # re-export ports
+        self.reexport(dig.get_port('reset'), show=show_pins)
+        self.reexport(amp_inst.get_port('inp'), show=show_pins)
+        self.reexport(amp_inst.get_port('inn'), show=show_pins)
