@@ -13,6 +13,7 @@ from ..passives.capacitor.momcap import MOMCapCore
 
 from .res import ResFeedbackCore
 from .amp import InvAmp, NorAmp
+from .digital import ClkReset
 
 if TYPE_CHECKING:
     from bag.layout.template import TemplateDB
@@ -198,6 +199,7 @@ class ClkAmpReset(TemplateBase):
         return dict(
             amp_params='clock amplifier parameters',
             nor_params='nor amplifier parameters.',
+            dig_config='digital cells configuration file.',
             show_pins='True to show pins.',
         )
 
@@ -220,6 +222,7 @@ class ClkAmpReset(TemplateBase):
     def draw_layout(self):
         amp_params = deepcopy(self.params['amp_params'])
         nor_params = deepcopy(self.params['nor_params'])
+        dig_config = self.params['dig_config']
         show_pins = self.params['show_pins']
 
         # get track information dictionary for amplifier
@@ -238,16 +241,25 @@ class ClkAmpReset(TemplateBase):
                 new_key = self._switch_amp_io(key[0]), self._switch_amp_io(key[1])
             amp_tr_spaces[new_key] = val
 
+        # make masters
         amp_params['show_pins'] = False
         amp_params['amp_params']['tr_widths'] = amp_tr_widths
         amp_params['amp_params']['tr_spaces'] = amp_tr_spaces
         amp_master = self.new_template(params=amp_params, temp_cls=ClkInvAmp)
         nor_params['show_pins'] = False
         nor_master = self.new_template(params=nor_params, temp_cls=NorAmp)
+        dig_params = dict(
+            config_file=dig_config,
+            show_pins=show_pins,
+        )
+        dig_master = self.new_template(params=dig_params, temp_cls=ClkReset)
+
+        # place blocks
+        y_ampn, y_ampp = amp_master.y_amp
+        x_nor = amp_master.bound_box.right_unit
+        y_dig = (amp_master.bound_box.height_unit - dig_master.bound_box.height_unit) // 2
 
         amp_inst = self.add_instance(amp_master, 'XAMP')
-        y_ampn, y_ampp = amp_master.y_amp
-
-        x_nor = amp_inst.bound_box.right_unit
         norn = self.add_instance(nor_master, 'XNORN', loc=(x_nor, y_ampn), unit_mode=True)
         norp = self.add_instance(nor_master, 'XNORP', loc=(x_nor, y_ampp), orient='MX', unit_mode=True)
+        dig = self.add_instance(dig_master, 'XDIG', loc=(x_nor, y_dig), unit_mode=True)

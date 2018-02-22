@@ -54,7 +54,7 @@ def generate(prj, specs, gen_sch=False, run_lvs=False):
 
 if __name__ == '__main__':
 
-    with open('specs_test/clk_inv_amp.yaml', 'r') as f:
+    with open('specs_test/clk_amp_reset.yaml', 'r') as f:
         block_specs = yaml.load(f)
 
     local_dict = locals()

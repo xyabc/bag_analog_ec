@@ -59,4 +59,5 @@ params:
     ndum: 4
     tr_widths: {}
     tr_spaces: {}
+  dig_config: 'dig_templates.yaml'
   show_pins: True

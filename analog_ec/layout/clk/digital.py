@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from bag.layout.template import TemplateDB
 
 
-class Flop(StdCellBase):
-    """A wrapper around a single D flip-flop.
+class ClkReset(StdCellBase):
+    """Clock receiver startup logic circuit.
 
     Parameters
     ----------
@@ -37,12 +37,21 @@ class Flop(StdCellBase):
         # type: () -> Dict[str, str]
         return dict(
             config_file='Standard cell configuration file.',
+            show_pins='True to show pin labels.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
 
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -62,7 +71,6 @@ class Flop(StdCellBase):
         tap_ncol = tap_master.std_size[0]
         inv_ncol = inv_master.std_size[0]
         space_ncol = 2
-        show_pins = True
 
         tap_list = [self.add_std_instance(tap_master, 'XTAP00', loc=(0, 0)),
                     self.add_std_instance(tap_master, 'XTAP01', loc=(0, 1))]
