@@ -1,0 +1,62 @@
+impl_lib: 'AAAFOO_TEST_CLK_AMP_RESET'
+impl_cell: 'CLK_AMP_RESET'
+sch_lib: 'bag_analog_ec'
+sch_cell: 'clk_amp_reset'
+
+routing_grid:
+  layers: [4, 5]
+  widths: [0.1, 0.1]
+  spaces: [0.1, 0.1]
+  bot_dir: 'x'
+
+params:
+  amp_params:
+    res_params:
+      l: 2.0e-6
+      w: 0.5e-6
+      sub_type: 'ntap'
+      threshold: 'standard'
+      nx: 4
+      ny: 6
+      em_specs: !!null
+      res_options: !!null
+    cap_params:
+      cap_bot_layer: 2
+      cap_width: 50.0
+      cap_height: 50.0
+      cap_margin: 0.5
+      port_width: 2
+      sub_name: ''
+    amp_params:
+      lch: 20.0e-9
+      ptap_w: 6
+      ntap_w: 6
+      w_dict:
+        p: 4
+        n: 4
+      th_dict:
+        p: 'standard'
+        n: 'standard'
+      seg_dict:
+        p: 10
+        n: 10
+      ndum: 4
+  nor_params:
+    lch: 20.0e-9
+    ptap_w: 6
+    ntap_w: 6
+    w_dict:
+      p: 4
+      n: 4
+    th_dict:
+      p: 'standard'
+      n: 'standard'
+    seg_dict:
+      invp: 40
+      invn: 40
+      enp: 80
+      enn: 4
+    ndum: 4
+    tr_widths: {}
+    tr_spaces: {}
+  show_pins: True
