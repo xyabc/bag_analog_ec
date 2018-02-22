@@ -4,7 +4,7 @@ import yaml
 
 import bag
 from bag.layout import RoutingGrid, TemplateDB
-from analog_ec.layout.amplifiers.diffamp import DiffAmpSelfBiased
+from analog_ec.layout.clk.driver import ClkInvAmp
 
 
 def make_tdb(prj, target_lib, specs):
@@ -28,7 +28,7 @@ def generate(prj, specs, gen_sch=False, run_lvs=False):
     params = specs['params']
 
     temp_db = make_tdb(prj, impl_lib, specs)
-    template = temp_db.new_template(params=params, temp_cls=DiffAmpSelfBiased)
+    template = temp_db.new_template(params=params, temp_cls=ClkInvAmp)
 
     print('creating layouts')
     temp_db.batch_layout(prj, [template], [impl_cell])
@@ -54,7 +54,7 @@ def generate(prj, specs, gen_sch=False, run_lvs=False):
 
 if __name__ == '__main__':
 
-    with open('specs_test/diffamp_self_biased.yaml', 'r') as f:
+    with open('specs_test/clk_inv_amp.yaml', 'r') as f:
         block_specs = yaml.load(f)
 
     local_dict = locals()
@@ -66,5 +66,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    # generate(bprj, block_specs, gen_sch=False, run_lvs=False)
-    generate(bprj, block_specs, gen_sch=True, run_lvs=True)
+    generate(bprj, block_specs, gen_sch=False, run_lvs=False)
+    # generate(bprj, block_specs, gen_sch=True, run_lvs=True)

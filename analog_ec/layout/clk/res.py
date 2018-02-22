@@ -75,10 +75,14 @@ class ResFeedbackCore(ResArrayBase):
         if res_options is None:
             res_options = {}
 
+        # draw array, make sure top layer is defined, and half-block dimensions are not allowed.
         min_tracks = (1, 1, 1, 1)
         top_layer = self.bot_layer_id + len(min_tracks) - 1
+        while self.grid.size_defined(top_layer):
+            top_layer += 1
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
-                        em_specs=em_specs, top_layer=top_layer, connect_up=True, **res_options)
+                        em_specs=em_specs, top_layer=top_layer, connect_up=True,
+                        half_blk_x=False, half_blk_y=False, **res_options)
 
         # connect row resistors
         vm_layer = self.bot_layer_id + 1
