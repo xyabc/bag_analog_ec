@@ -4,6 +4,7 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any
 
+from bag.layout.routing import TrackID
 from bag.layout.digital import StdCellTemplate, StdCellBase
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ class ClkReset(StdCellBase):
         # type: () -> Dict[str, str]
         return dict(
             config_file='Standard cell configuration file.',
+            top_layer='The template top layer.',
             show_pins='True to show pin labels.',
         )
 
@@ -51,6 +53,7 @@ class ClkReset(StdCellBase):
         # type: () -> None
 
         config_file = self.params['config_file']
+        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
         # use standard cell routing grid
@@ -58,62 +61,70 @@ class ClkReset(StdCellBase):
 
         self.set_draw_boundaries(True)
 
+        # create masters
         tap_params = dict(cell_name='tap_pwr', config_file=config_file)
         tap_master = self.new_template(params=tap_params, temp_cls=StdCellTemplate)
-        flop_name = 'dff_1x'
-        flop_params = dict(cell_name=flop_name, config_file=config_file)
+        flop_params = dict(cell_name='dff_1x', config_file=config_file)
         flop_master = self.new_template(params=flop_params, temp_cls=StdCellTemplate)
-        inv_name = 'inv_clk_16x'
-        inv_params = dict(cell_name=inv_name, config_file=config_file)
+        inv_params = dict(cell_name='inv_clk_16x', config_file=config_file)
         inv_master = self.new_template(params=inv_params, temp_cls=StdCellTemplate)
 
+        # place instances
         flop_ncol = flop_master.std_size[0]
         tap_ncol = tap_master.std_size[0]
         inv_ncol = inv_master.std_size[0]
         space_ncol = 2
-
         tap_list = [self.add_std_instance(tap_master, 'XTAP00', loc=(0, 0)),
                     self.add_std_instance(tap_master, 'XTAP01', loc=(0, 1))]
-        ff_bot = self.add_std_instance(flop_master, 'XFFB', loc=(tap_ncol + space_ncol, 0), nx=2, spx=flop_ncol)
-        ff_top = self.add_std_instance(flop_master, 'XFFT', loc=(tap_ncol + space_ncol, 1), nx=2, spx=flop_ncol)
-        inv_top = self.add_std_instance(inv_master, 'XINVT', loc=(2 * flop_ncol + tap_ncol + space_ncol, 1), nx=2,
-                                        spx=inv_ncol)
-        inv_bot = self.add_std_instance(inv_master, 'XINVB', loc=(2 * flop_ncol + tap_ncol + space_ncol, 0), nx=2,
-                                        spx=inv_ncol)
-        xcur = 2 * flop_ncol + tap_ncol + 2 * space_ncol + 2 * inv_ncol
-        tap_list.append(self.add_std_instance(tap_master, 'XTAP00', loc=(xcur, 0)))
-        tap_list.append(self.add_std_instance(tap_master, 'XTAP01', loc=(xcur, 1)))
+        xcur = tap_ncol + space_ncol
+        ff_bot0 = self.add_std_instance(flop_master, 'XFFB0', loc=(xcur, 0))
+        ff_bot1 = self.add_std_instance(flop_master, 'XFFB1', loc=(xcur + flop_ncol, 0))
+        ff_top0 = self.add_std_instance(flop_master, 'XFFT0', loc=(xcur, 1))
+        ff_top1 = self.add_std_instance(flop_master, 'XFFT1', loc=(xcur + flop_ncol, 1))
+        xcur += 2 * flop_ncol
+        inv_bot0 = self.add_std_instance(inv_master, 'XINVB0', loc=(xcur, 0))
+        inv_bot1 = self.add_std_instance(inv_master, 'XINVB1', loc=(xcur + inv_ncol, 0))
+        inv_top0 = self.add_std_instance(inv_master, 'XINVT0', loc=(xcur, 1))
+        inv_top1 = self.add_std_instance(inv_master, 'XINVT1', loc=(xcur + inv_ncol, 1))
+        xcur += 2 * inv_ncol + space_ncol
+        tap_list.append(self.add_std_instance(tap_master, 'XTAP10', loc=(xcur, 0)))
+        tap_list.append(self.add_std_instance(tap_master, 'XTAP11', loc=(xcur, 1)))
 
+        # set template size and draw space/boundaries
+        self.set_std_size((xcur + tap_ncol, 2), top_layer=top_layer)
+        self.fill_space()
+        self.draw_boundaries()
+
+        # connect signals
+        warr_dict = {}
+        for inst, name in ((ff_bot0, 'FB0'), (ff_bot1, 'FB1'), (ff_top0, 'FT0'), (ff_top1, 'FT1'),
+                           (inv_bot0, 'IB0'), (inv_bot1, 'IB1'), (inv_top0, 'IT0'), (inv_top1, 'IT1')):
+            warr_dict['%s%s' % (name, 'I')] = inst.get_all_port_pins('I')[0]
+            warr_dict['%s%s' % (name, 'O')] = inst.get_all_port_pins('O')[0]
+
+        port_layer = warr_dict['FB0I'].layer_id
+        hm_layer = port_layer + 1
+        mid_tidx = self.grid.coord_to_nearest_track(hm_layer, self.bound_box.height_unit // 2, half_track=True,
+                                                    mode=0, unit_mode=True)
+        top_tidx = mid_tidx + 2
+        bot_tidx = mid_tidx - 2
+        bot_tid = TrackID(hm_layer, bot_tidx)
+        top_tid = TrackID(hm_layer, top_tidx)
+        mid_tid = TrackID(hm_layer, mid_tidx)
+        self.connect_to_tracks([warr_dict['FB0O'], warr_dict['FB1I'], warr_dict['IB0I']], bot_tid)
+        self.connect_to_tracks([warr_dict['FT0O'], warr_dict['FT1I']], top_tid)
+        self.connect_to_tracks([warr_dict['FT1O'], warr_dict['FB0I'], warr_dict['IT0I']], mid_tid)
+        self.connect_to_tracks([warr_dict['IB0O'], warr_dict['IB1I']], bot_tid)
+        self.connect_to_tracks([warr_dict['IT0O'], warr_dict['IT1I']], top_tid)
+
+        # gather/connect supply wires
         vdd_warrs, vss_warrs = [], []
         for inst in tap_list:
             vdd_warrs.extend(inst.get_all_port_pins('VDD'))
             vss_warrs.extend(inst.get_all_port_pins('VSS'))
-
         vdd_warrs = self.connect_wires(vdd_warrs)
         vss_warrs = self.connect_wires(vss_warrs)
 
-        # set template size
-        top_layer = self.std_routing_layers[-1]
-        while not self.grid.size_defined(top_layer):
-            top_layer += 1
-        self.set_std_size((2 * (flop_ncol + tap_ncol + space_ncol + inv_ncol), 2), top_layer=top_layer)
-        self.fill_space()
-
-        # export supplies
+        # export pins
         self.add_pin('VDD', vdd_warrs, show=show_pins)
         self.add_pin('VSS', vss_warrs, show=show_pins)
-        # self.reexport(inv_bot.get_port('I'), 'IINVBOT', show=show_pins)
-        # self.reexport(inv_bot.get_port('O'), 'OINVBOT', show=show_pins)
-        # self.reexport(inv_top.get_port('I'), 'IINVTOP', show=show_pins)
-        # self.reexport(inv_top.get_port('O'), 'OINVTOP', show=show_pins)
-        for inst, name in [(ff_bot, 'BOT'), (ff_top, 'TOP')]:
-            for idx in range(2):
-                self.reexport(inst.get_port('I', col=idx), 'I%s%d' % (name, idx), show=show_pins)
-                self.reexport(inst.get_port('O', col=idx), 'O%s%d' % (name, idx), show=show_pins)
-                self.reexport(inst.get_port('CLK', col=idx), 'CLK%s%d' % (name, idx), show=show_pins)
-        for inst, name in [(inv_bot, 'INVBOT'), (inv_top, 'INVTOP')]:
-            for idx in range(2):
-                self.reexport(inst.get_port('I', col=idx), 'I%s%d' % (name, idx), show=show_pins)
-                self.reexport(inst.get_port('O', col=idx), 'O%s%d' % (name, idx), show=show_pins)
-
-        self.draw_boundaries()

@@ -250,6 +250,7 @@ class ClkAmpReset(TemplateBase):
         nor_master = self.new_template(params=nor_params, temp_cls=NorAmp)
         dig_params = dict(
             config_file=dig_config,
+            top_layer=amp_master.top_layer,
             show_pins=show_pins,
         )
         dig_master = self.new_template(params=dig_params, temp_cls=ClkReset)
