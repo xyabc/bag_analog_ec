@@ -133,8 +133,8 @@ class ResFeedbackCore(ResArrayBase):
                 right_row = 1 - right_row
 
         ym_width = self.w_tracks[3]
-        for row_idx, col_idx, par, name in [(0, 0, -1, 'in1'), ((ny // 2) - 1, nx - 1, 1, 'in2'),
-                                            (ny // 2, nx - 1, 1, 'in4'), (ny - 1, 0, -1, 'in3')]:
+        for row_idx, col_idx, par, name in [(0, 0, -1, 'inn'), ((ny // 2) - 1, nx - 1, 1, 'outn'),
+                                            (ny // 2, nx - 1, 1, 'outp'), (ny - 1, 0, -1, 'inp')]:
             ports = self.get_res_ports(row_idx, col_idx)
             con_par = (row_idx + col_idx) % 2
             if par > 0:

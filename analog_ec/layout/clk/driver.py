@@ -46,48 +46,54 @@ class ClkInvAmp(TemplateBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             res_params='resistor array parameters',
             amp_params='amplifier parameters.',
             cap_params='cap parameters',
+            show_pins='True to show pin labels.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         res_params = self.params['res_params'].copy()
         amp_params = self.params['amp_params'].copy()
         cap_params = self.params['cap_params'].copy()
+        show_pins = self.params['show_pins']
 
+        # make resistor and amplifiers
         res_params['show_pins'] = False
         res_master = self.new_template(params=res_params, temp_cls=ResFeedbackCore)
         top_layer = res_master.top_layer
 
         amp_params['top_layer'] = top_layer
         amp_params['show_pins'] = False
+        amp_master = self.new_template(params=amp_params, temp_cls=InvAmp)
+
+        # get height, compute capacitor height
+        w_res = res_master.bound_box.width_unit
+        w_amp = amp_master.bound_box.width_unit
+        h_res = res_master.bound_box.height_unit
+        h_amp = amp_master.bound_box.height_unit
+
+        h_atot = h_res + 2 * h_amp
 
         cap_params['cap_top_layer'] = top_layer
         cap_params['sub_name'] = ''
         cap_params['show_pins'] = False
-
-        amp_master = self.new_template(params=amp_params, temp_cls=InvAmp)
+        cap_params['cap_height'] = h_atot // 2 * self.grid.resolution
         cap_master = self.new_template(params=cap_params, temp_cls=MOMCapCore)
 
-        w_res = res_master.bound_box.width_unit
-        w_amp = amp_master.bound_box.width_unit
+        # get overall size and placement
         w_cap = cap_master.bound_box.width_unit
-        h_res = res_master.bound_box.height_unit
-        h_amp = amp_master.bound_box.height_unit
         h_cap = cap_master.bound_box.height_unit
 
-        h_tot = max(h_res + 2 * h_amp, 2 * h_cap)
+        h_tot = max(h_atot, 2 * h_cap)
         w_atot = max(w_res, w_amp)
 
         y_capn = h_tot // 2 - h_cap
@@ -97,17 +103,55 @@ class ClkInvAmp(TemplateBase):
         y_res = (h_tot - h_res) // 2
         x_amp = w_cap + (w_atot - w_amp) // 2
         x_res = w_cap + (w_atot - w_res) // 2
+        # set size
+        self.set_size_from_bound_box(top_layer, BBox(0, 0, w_atot + w_cap, h_tot, self.grid.resolution,
+                                                     unit_mode=True))
 
-        # place instances
-        capn = self.add_instance(cap_master, 'XCAPN', loc=(0, y_capn), unit_mode=True)
-        capp = self.add_instance(cap_master, 'XCAPP', loc=(0, y_capp), orient='MX', unit_mode=True)
+        # place amplifiers
         ampn = self.add_instance(amp_master, 'XAMPN', loc=(x_amp, y_ampn), unit_mode=True)
         ampp = self.add_instance(amp_master, 'XAMPP', loc=(x_amp, y_ampp), orient='MX', unit_mode=True)
         res = self.add_instance(res_master, 'XRES', loc=(x_res, y_res), unit_mode=True)
 
-        # set size
-        self.set_size_from_bound_box(top_layer, BBox(0, 0, w_atot + w_cap, h_tot, self.grid.resolution,
-                                                     unit_mode=True))
+        # compute cap output port locations
+        amp_inp = ampp.get_all_port_pins('in')[0]
+        amp_inn = ampn.get_all_port_pins('in')[0]
+        inn_coord = self.grid.track_to_coord(amp_inn.layer_id, amp_inn.track_id.base_index, unit_mode=True)
+        cap_outn_tidx = self.grid.coord_to_nearest_track(top_layer + 1, inn_coord, half_track=True,
+                                                         mode=1, unit_mode=True)
+        # update MOM cap master, and add cap instances
+        cap_master = cap_master.new_template_with(port_idx=(None, cap_outn_tidx))
+        capn = self.add_instance(cap_master, 'XCAPN', loc=(0, y_capn), unit_mode=True)
+        capp = self.add_instance(cap_master, 'XCAPP', loc=(0, y_capp), orient='MX', unit_mode=True)
+
+        # connect wires
+        res_inp = res.get_all_port_pins('inp')[0]
+        res_inn = res.get_all_port_pins('inn')[0]
+        res_outp = res.get_all_port_pins('outp')[0]
+        res_outn = res.get_all_port_pins('outn')[0]
+
+        amp_outp = ampp.get_all_port_pins('out')[0]
+        amp_outn = ampn.get_all_port_pins('out')[0]
+        cap_inp = capp.get_all_port_pins('minus')[0]
+        cap_inn = capn.get_all_port_pins('minus')[0]
+        cap_outp = capp.get_all_port_pins('plus')[0]
+        cap_outn = capn.get_all_port_pins('plus')[0]
+
+        self.connect_to_tracks([cap_outp, amp_inp], res_inp.track_id,
+                               track_lower=res_inp.lower, track_upper=res_inp.upper)
+        self.connect_to_tracks([cap_outn, amp_inn], res_inn.track_id,
+                               track_lower=res_inn.lower, track_upper=res_inn.upper)
+        self.connect_to_tracks(amp_outp, res_outp.track_id, track_lower=res_outp.lower, track_upper=res_outp.upper)
+        self.connect_to_tracks(amp_outn, res_outn.track_id, track_lower=res_outn.lower, track_upper=res_outn.upper)
+
+        # export pins
+        self.add_pin('inp', cap_inp, show=show_pins)
+        self.add_pin('inn', cap_inn, show=show_pins)
+        self.add_pin('outp', amp_outp, show=show_pins)
+        self.add_pin('outn', amp_outn, show=show_pins)
+
+        for amp in (ampp, ampn):
+            self.reexport(amp.get_port('VDD'), show=show_pins)
+            self.reexport(amp.get_port('VSS'), show=show_pins)
 
 
 class GatedClockRx(TemplateBase):

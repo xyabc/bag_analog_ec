@@ -52,7 +52,7 @@ class MOMCapCore(TemplateBase):
             cap_height='MOM cap height, in layout units.',
             cap_margin='margin between cap and boundary, in layout units.',
             port_width='port track width, in number of tracks.',
-            port_idx='port track index.  If None, defaults to center.',
+            port_idx='port track index.  Can be int, two-int tuple, or None.  If None, defaults to center.',
             show_pins='True to show pin labels.',
             cap_options='MOM cap layout options.',
             sub_name='Substrate name.  Empty string to disable.',
@@ -65,7 +65,7 @@ class MOMCapCore(TemplateBase):
             cap_margin=0,
             port_width=1,
             port_idx=None,
-            show_pins=False,
+            show_pins=True,
             cap_options=None,
             sub_name='VSS',
         )
@@ -122,25 +122,38 @@ class MOMCapCore(TemplateBase):
         cp, cn = cap_ports[cap_top_layer]
         cp = cp[0]
         cn = cn[0]
+        idx_default = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
         if port_idx is None:
-            port_idx = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
-        port_tid = TrackID(port_layer, port_idx, width=port_width)
+            plus_idx = minus_idx = idx_default
+        elif isinstance(port_idx, int):
+            plus_idx = minus_idx = port_idx
+        else:
+            minus_idx, plus_idx = port_idx
+            if minus_idx is None:
+                minus_idx = idx_default
+            if plus_idx is None:
+                plus_idx = idx_default
+        plus_tid = TrackID(port_layer, plus_idx, width=port_width)
+        minus_tid = TrackID(port_layer, minus_idx, width=port_width)
+
         if cp.track_id.base_index < cn.track_id.base_index:
             warr0, warr1 = cp, cn
             name0, name1 = 'plus', 'minus'
+            tid0, tid1 = plus_tid, minus_tid
         else:
             warr0, warr1 = cn, cp
             name0, name1 = 'minus', 'plus'
+            tid0, tid1 = minus_tid, plus_tid
 
-        warr0 = self.connect_to_tracks(warr0, port_tid)
-        warr1 = self.connect_to_tracks(warr1, port_tid)
+        warr0 = self.connect_to_tracks(warr0, tid0)
+        warr1 = self.connect_to_tracks(warr1, tid1)
         res_len *= res
         port_len *= res
-        self.add_res_metal_warr(port_layer, port_idx, warr0.lower - res_len, warr0.lower, width=port_width)
-        self.add_res_metal_warr(port_layer, port_idx, warr1.upper, warr1.upper + res_len, width=port_width)
-        warr0 = self.add_wires(port_layer, port_idx, warr0.lower - res_len - port_len,
+        self.add_res_metal_warr(port_layer, tid0.base_index, warr0.lower - res_len, warr0.lower, width=port_width)
+        self.add_res_metal_warr(port_layer, tid1.base_index, warr1.upper, warr1.upper + res_len, width=port_width)
+        warr0 = self.add_wires(port_layer, tid0.base_index, warr0.lower - res_len - port_len,
                                warr0.lower - res_len, width=port_width)
-        warr1 = self.add_wires(port_layer, port_idx, warr1.upper + res_len,
+        warr1 = self.add_wires(port_layer, tid1.base_index, warr1.upper + res_len,
                                warr1.upper + res_len + port_len, width=port_width)
 
         self.add_pin(name0, warr0, show=show_pins)
