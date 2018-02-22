@@ -70,15 +70,15 @@ class ResFeedbackCore(ResArrayBase):
 
         if nx <= 0:
             raise ValueError('number of resistors in a row must be positive.')
-        if ny % 2 != 0:
-            raise ValueError('number of resistors in a column must be even')
+        if ny % 4 != 2:
+            raise ValueError('number of resistors in a column must be 2 mod 4')
         if res_options is None:
             res_options = {}
 
         # draw array, make sure top layer is defined, and half-block dimensions are not allowed.
         min_tracks = (1, 1, 1, 1)
         top_layer = self.bot_layer_id + len(min_tracks) - 1
-        while self.grid.size_defined(top_layer):
+        while not self.grid.size_defined(top_layer):
             top_layer += 1
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
                         em_specs=em_specs, top_layer=top_layer, connect_up=True,
@@ -133,7 +133,6 @@ class ResFeedbackCore(ResArrayBase):
                 right_row = 1 - right_row
 
         ym_width = self.w_tracks[3]
-        min_len_mode_list = [0] * len(self.w_tracks)
         for row_idx, col_idx, par, name in [(0, 0, -1, 'in1'), ((ny // 2) - 1, nx - 1, 1, 'in2'),
                                             (ny // 2, nx - 1, 1, 'in4'), (ny - 1, 0, -1, 'in3')]:
             ports = self.get_res_ports(row_idx, col_idx)
@@ -142,5 +141,5 @@ class ResFeedbackCore(ResArrayBase):
                 con_par = 1 - con_par
             vl_tidx = self.grid.coord_to_nearest_track(ym_layer, ports[con_par].middle, mode=par, half_track=True)
             vl_tid = TrackID(ym_layer, vl_tidx, width=ym_width)
-            warrs = self.connect_with_via_stack(ports[con_par], vl_tid, min_len_mode_list=min_len_mode_list)
+            warrs = self.connect_with_via_stack(ports[con_par], vl_tid, min_len_mode_list=0)
             self.add_pin(name, warrs[-1], show=show_pins)

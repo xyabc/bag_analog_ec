@@ -76,8 +76,8 @@ class InvAmp(AnalogBase):
 
         tr_manager = TrackManager(self.grid, tr_widths, tr_spaces)
         hm_layer = self.mos_conn_layer + 1
-        wtr_in = tr_manager.get_width(hm_layer, 'out')
-        wtr_out = tr_manager.get_width(hm_layer, 'in')
+        wtr_out = tr_manager.get_width(hm_layer, 'out')
+        wtr_in = tr_manager.get_width(hm_layer, 'in')
         wtr_en = tr_manager.get_width(hm_layer, 'en')
         wtr_mid = tr_manager.get_width(hm_layer, 'mid')
         sp_io = tr_manager.get_space(hm_layer, ('in', 'out'))

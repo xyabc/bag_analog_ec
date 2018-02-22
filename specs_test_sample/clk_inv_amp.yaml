@@ -16,7 +16,7 @@ params:
     sub_type: 'ntap'
     threshold: 'standard'
     nx: 4
-    ny: 4
+    ny: 6
     em_specs: !!null
     res_options: !!null
   cap_params:

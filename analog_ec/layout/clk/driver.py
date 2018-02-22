@@ -73,7 +73,7 @@ class ClkInvAmp(TemplateBase):
         amp_params['top_layer'] = top_layer
         amp_params['show_pins'] = False
 
-        cap_params['cap_top_layer'] = top_layer - 1
+        cap_params['cap_top_layer'] = top_layer
         cap_params['sub_name'] = ''
         cap_params['show_pins'] = False
 
