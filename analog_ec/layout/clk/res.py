@@ -33,6 +33,12 @@ class ResFeedbackCore(ResArrayBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         ResArrayBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        # type: () -> Dict[str, Any]
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -145,3 +151,14 @@ class ResFeedbackCore(ResArrayBase):
             vl_tid = TrackID(ym_layer, vl_tidx, width=ym_width)
             warrs = self.connect_with_via_stack(ports[con_par], vl_tid, min_len_mode_list=0)
             self.add_pin(name, warrs[-1], show=show_pins)
+
+        # compute schematic parameters
+        intent = res_options.get('res_type', 'standard')
+        sub_name = 'VDD' if sub_type == 'ntap' else 'VSS'
+        self._sch_params = dict(
+            l=l,
+            w=w,
+            intent=intent,
+            nser=nx * (ny // 2),
+            sub_name=sub_name,
+        )

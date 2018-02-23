@@ -32,22 +32,23 @@ class bag_analog_ec__invamp(Module):
             dictionary from parameter names to descriptions.
         """
         return dict(
+            lch='Channel length, in meters.',
+            w_dict='Transistor width dictionary.',
+            th_dict='Transistor threshold dictionary.',
+            seg_dict='Transistor number of segments dictionary.',
+            dum_info='Dummy information data structure.',
         )
 
-    def design(self):
-        """To be overridden by subclasses to design this module.
+    def design(self, lch, w_dict, th_dict, seg_dict, dum_info):
+        # design main transistors
+        tran_info_list = [('XP', 'p'), ('XN', 'n')]
 
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
+        for inst_name, inst_type in tran_info_list:
+            w = w_dict[inst_type]
+            th = th_dict[inst_type]
+            seg = seg_dict[inst_type]
+            stack = 1
+            self.instances[inst_name].design(w=w, l=lch, seg=seg, intent=th, stack=stack)
 
-        To modify schematic structure, call:
-
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
-        """
-        pass
+        # design dummies
+        self.design_dummy_transistors(dum_info, 'XDUM', 'VDD', 'VSS')

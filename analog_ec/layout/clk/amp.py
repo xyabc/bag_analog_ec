@@ -298,7 +298,7 @@ class NorAmp(AnalogBase):
         loc = tr_manager.align_wires(hm_layer, ['en'], pg_tracks[1], alignment=1)[0]
         tid = self.make_track_id('pch', 1, 'g', loc, width=wtr_en)
         warr = self.connect_to_tracks([enp['g'], enn['g']], tid)
-        self.add_pin('en', warr, show=show_pins)
+        self.add_pin('enb', warr, show=show_pins)
 
         # draw dummies
         ptap_wire_arrs, ntap_wire_arrs = self.fill_dummy()
