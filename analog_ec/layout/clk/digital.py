@@ -41,6 +41,8 @@ class ClkReset(StdCellBase):
             tr_widths='signal wire width dictionary.',
             tr_spaces='signal wire space dictionary.',
             top_layer='The template top layer.',
+            hm_sp_sig='space between internal horizontal signal wires.',
+            hm_mid_idx_off='offset of middle internal horizontal signal wire track index.',
             show_pins='True to show pin labels.',
         )
 
@@ -48,17 +50,20 @@ class ClkReset(StdCellBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            hm_sp_sig=1,
+            hm_mid_idx_off=1,
             show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
-        hm_sp_sig = 1
 
         config_file = self.params['config_file']
         tr_widths = self.params['tr_widths']
         tr_spaces = self.params['tr_spaces']
         top_layer = self.params['top_layer']
+        hm_sp_sig = self.params['hm_sp_sig']
+        hm_mid_idx_off = self.params['hm_mid_idx_off']
         show_pins = self.params['show_pins']
 
         tr_manager = TrackManager(self.grid, tr_widths, tr_spaces)
@@ -117,6 +122,7 @@ class ClkReset(StdCellBase):
 
         mid_tidx = self.grid.coord_to_nearest_track(hm_layer, self.bound_box.height_unit // 2, half_track=True,
                                                     mode=0, unit_mode=True)
+        mid_tidx += hm_mid_idx_off
         top_tidx = mid_tidx + 1 + hm_sp_sig
         bot_tidx = mid_tidx - 1 - hm_sp_sig
         bot_tid = TrackID(hm_layer, bot_tidx)
