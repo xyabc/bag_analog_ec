@@ -1,0 +1,140 @@
+lib_name: bag_analog_ec
+cell_name: clk_invamp_diff_reset
+pins: [ "VDD", "VSS", "inp", "inn", "clkn", "rst", "clkp" ]
+instances:
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  XAMP:
+    lib_name: bag_analog_ec
+    cell_name: clk_invamp_diff
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      outp:
+        direction: output
+        net_name: "norp"
+        num_bits: 1
+      outn:
+        direction: output
+        net_name: "norn"
+        num_bits: 1
+      inp:
+        direction: input
+        net_name: "inp"
+        num_bits: 1
+      inn:
+        direction: input
+        net_name: "inn"
+        num_bits: 1
+  PIN4:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN6:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN5:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  XNORP:
+    lib_name: bag_analog_ec
+    cell_name: noramp
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "clkp"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "norn"
+        num_bits: 1
+      enb:
+        direction: input
+        net_name: "rstp"
+        num_bits: 1
+  XNORN:
+    lib_name: bag_analog_ec
+    cell_name: noramp
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "clkn"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "norp"
+        num_bits: 1
+      enb:
+        direction: input
+        net_name: "rstn"
+        num_bits: 1
+  XDIG:
+    lib_name: bag_analog_ec
+    cell_name: clk_invamp_diff_reset_logic
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      rstp:
+        direction: output
+        net_name: "rstp"
+        num_bits: 1
+      rstn:
+        direction: output
+        net_name: "rstn"
+        num_bits: 1
+      clkp:
+        direction: input
+        net_name: "clkp"
+        num_bits: 1
+      rst:
+        direction: input
+        net_name: "rst"
+        num_bits: 1
+      clkn:
+        direction: input
+        net_name: "clkn"
+        num_bits: 1

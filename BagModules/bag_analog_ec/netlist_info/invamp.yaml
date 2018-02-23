@@ -1,0 +1,80 @@
+lib_name: bag_analog_ec
+cell_name: invamp
+pins: [ "VDD", "VSS", "in", "out" ]
+instances:
+  XP:
+    lib_name: BAG_prim
+    cell_name: pmos4_standard
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "out"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "in"
+        num_bits: 1
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN4:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  XN:
+    lib_name: BAG_prim
+    cell_name: nmos4_standard
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "out"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "in"
+        num_bits: 1
+  XDUM:
+    lib_name: BAG_prim
+    cell_name: nmos4_standard
+    instpins:
+      S:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      D:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      B:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      G:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1

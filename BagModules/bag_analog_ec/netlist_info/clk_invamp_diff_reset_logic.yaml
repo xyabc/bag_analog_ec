@@ -1,0 +1,216 @@
+lib_name: bag_analog_ec
+cell_name: clk_invamp_diff_reset_logic
+pins: [ "VDD", "VSS", "rstn", "clkp", "clkn", "rstp", "rst" ]
+instances:
+  X2:
+    lib_name: digital_ec_templates
+    cell_name: dff
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      O:
+        direction: output
+        net_name: "rstn0"
+        num_bits: 1
+      CLK:
+        direction: input
+        net_name: "clkn"
+        num_bits: 1
+      I:
+        direction: input
+        net_name: "rstp0"
+        num_bits: 1
+  X1:
+    lib_name: digital_ec_templates
+    cell_name: dff
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      O:
+        direction: output
+        net_name: "noconn"
+        num_bits: 1
+      CLK:
+        direction: input
+        net_name: "clkn"
+        num_bits: 1
+      I:
+        direction: input
+        net_name: "rstn0"
+        num_bits: 1
+  XFFT1:
+    lib_name: digital_ec_templates
+    cell_name: dff
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      O:
+        direction: output
+        net_name: "rstp0"
+        num_bits: 1
+      CLK:
+        direction: input
+        net_name: "clkp"
+        num_bits: 1
+      I:
+        direction: input
+        net_name: "rstd"
+        num_bits: 1
+  XFFT0:
+    lib_name: digital_ec_templates
+    cell_name: dff
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      O:
+        direction: output
+        net_name: "rstd"
+        num_bits: 1
+      CLK:
+        direction: input
+        net_name: "clkp"
+        num_bits: 1
+      I:
+        direction: input
+        net_name: "rst"
+        num_bits: 1
+  XINVB0:
+    lib_name: digital_ec_templates
+    cell_name: inv
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "rstnb"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "rstn0"
+        num_bits: 1
+  XINVB1:
+    lib_name: digital_ec_templates
+    cell_name: inv
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "rstn"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "rstnb"
+        num_bits: 1
+  XINVT0:
+    lib_name: digital_ec_templates
+    cell_name: inv
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "rstpb"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "rstp0"
+        num_bits: 1
+  XINVT1:
+    lib_name: digital_ec_templates
+    cell_name: inv
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "rstp"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "rstpb"
+        num_bits: 1
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN4:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN6:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN5:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  I1:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
+        direction: inputOutput
+        net_name: "noconn"
+        num_bits: 1

@@ -1,0 +1,124 @@
+lib_name: bag_analog_ec
+cell_name: clk_invamp_diff
+pins: [ "VSS", "inp", "inn", "outp", "outn", "VDD" ]
+instances:
+  XCAPN:
+    lib_name: bag_analog_ec
+    cell_name: cap_mom
+    instpins:
+      minus:
+        direction: inputOutput
+        net_name: "inn"
+        num_bits: 1
+      plus:
+        direction: inputOutput
+        net_name: "midn"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  XCAPP:
+    lib_name: bag_analog_ec
+    cell_name: cap_mom
+    instpins:
+      minus:
+        direction: inputOutput
+        net_name: "inp"
+        num_bits: 1
+      plus:
+        direction: inputOutput
+        net_name: "midp"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  PIN5:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN1:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN4:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
+  XRES:
+    lib_name: bag_analog_ec
+    cell_name: res_feedback_diff
+    instpins:
+      outn:
+        direction: inputOutput
+        net_name: "outp"
+        num_bits: 1
+      inn:
+        direction: inputOutput
+        net_name: "midn"
+        num_bits: 1
+      inp:
+        direction: inputOutput
+        net_name: "midp"
+        num_bits: 1
+      outp:
+        direction: inputOutput
+        net_name: "outn"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  XAMPN:
+    lib_name: bag_analog_ec
+    cell_name: invamp
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "outp"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "midn"
+        num_bits: 1
+  XAMPP:
+    lib_name: bag_analog_ec
+    cell_name: invamp
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "outn"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "midp"
+        num_bits: 1
