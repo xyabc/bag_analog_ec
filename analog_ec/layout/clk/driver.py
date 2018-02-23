@@ -155,14 +155,21 @@ class ClkInvAmp(TemplateBase):
         # export pins
         self.add_pin('inp', cap_inp, show=show_pins)
         self.add_pin('inn', cap_inn, show=show_pins)
-        self.add_pin('outp', amp_outp, show=show_pins)
-        self.add_pin('outn', amp_outn, show=show_pins)
+        self.add_pin('outn', amp_outp, show=show_pins)
+        self.add_pin('outp', amp_outn, show=show_pins)
 
         for amp in (ampp, ampn):
             self.reexport(amp.get_port('VDD'), show=show_pins)
             self.reexport(amp.get_port('VSS'), show=show_pins)
 
         self._y_amp = y_ampn, y_ampp
+
+        # setup schematic parameters
+        self._sch_params = dict(
+            cap_params=cap_master.sch_params,
+            inv_params=amp_master.sch_params,
+            res_params=res_master.sch_params,
+        )
 
 
 class ClkAmpReset(TemplateBase):
@@ -279,9 +286,9 @@ class ClkAmpReset(TemplateBase):
         self.add_pin('VSS', vss_list, show=show_pins)
 
         # connect clocks
-        amp_outp = amp_inst.get_all_port_pins('outp')[0]
+        amp_outp = amp_inst.get_all_port_pins('outn')[0]
         nor_inp = norp.get_all_port_pins('in')[0]
-        amp_outn = amp_inst.get_all_port_pins('outn')[0]
+        amp_outn = amp_inst.get_all_port_pins('outp')[0]
         nor_inn = norn.get_all_port_pins('in')[0]
         self.connect_wires([amp_outp, nor_inp])
         self.connect_wires([amp_outn, nor_inn])
@@ -295,14 +302,21 @@ class ClkAmpReset(TemplateBase):
         self.add_pin('clkn', nor_outn, show=show_pins)
 
         # connect enables
-        enp = norp.get_all_port_pins('en')[0]
-        enn = norn.get_all_port_pins('en')[0]
-        enp_dig = dig.get_all_port_pins('enp')[0]
-        enn_dig = dig.get_all_port_pins('enn')[0]
-        self.connect_to_tracks(enp, enp_dig.track_id, track_lower=enp_dig.lower)
-        self.connect_to_tracks(enn, enn_dig.track_id, track_upper=enn_dig.lower)
+        rstp = norp.get_all_port_pins('enb')[0]
+        rstn = norn.get_all_port_pins('enb')[0]
+        rstp_dig = dig.get_all_port_pins('rstp')[0]
+        rstn_dig = dig.get_all_port_pins('rstn')[0]
+        self.connect_to_tracks(rstp, rstp_dig.track_id, track_lower=rstp_dig.lower)
+        self.connect_to_tracks(rstn, rstn_dig.track_id, track_upper=rstn_dig.lower)
 
         # re-export ports
-        self.reexport(dig.get_port('reset'), show=show_pins)
+        self.reexport(dig.get_port('rst'), show=show_pins)
         self.reexport(amp_inst.get_port('inp'), show=show_pins)
         self.reexport(amp_inst.get_port('inn'), show=show_pins)
+
+        # get schematic parameters
+        self._sch_params = dict(
+            amp_params=amp_master.sch_params,
+            nor_params=nor_master.sch_params,
+            dig_params=dig_master.sch_params,
+        )

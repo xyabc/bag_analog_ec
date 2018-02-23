@@ -32,6 +32,12 @@ class ClkReset(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        # type: () -> Dict[str, Any]
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -142,17 +148,17 @@ class ClkReset(StdCellBase):
         vdd_warrs = self.connect_wires(vdd_warrs)
         vss_warrs = self.connect_wires(vss_warrs)
 
-        # connect reset
-        w_rst = tr_manager.get_width(hm_layer, 'reset')
+        # connect rst
+        w_rst = tr_manager.get_width(hm_layer, 'rst')
         rst = warr_dict['FT0I']
         rst = self.connect_to_tracks(rst, top_tid, min_len_mode=True)
         vm_tidx = self.grid.coord_to_nearest_track(vm_layer, rst.middle, half_track=True)
         vm_tid = TrackID(vm_layer, vm_tidx, width=w_rst)
-        self.add_pin('reset', self.connect_to_tracks(rst, vm_tid, min_len_mode=0), show=show_pins)
+        self.add_pin('rst', self.connect_to_tracks(rst, vm_tid, min_len_mode=0), show=show_pins)
         # connect enables
         hm_w_en = tr_manager.get_width(hm_layer, 'en')
         vm_w_en = tr_manager.get_width(vm_layer, 'en')
-        for name, pin in (('IT1O', 'enp'), ('IB1O', 'enn')):
+        for name, pin in (('IT1O', 'rstp'), ('IB1O', 'rstn')):
             warr = warr_dict[name]
             tid = warr.track_id.base_index
             coord = self.grid.track_to_coord(port_layer, tid, unit_mode=True)
@@ -196,3 +202,9 @@ class ClkReset(StdCellBase):
         # export pins
         self.add_pin('VDD', vdd, show=show_pins)
         self.add_pin('VSS', vss, show=show_pins)
+
+        # compute schematic parameters
+        self._sch_params = dict(
+            flop_info=flop_master.get_sch_master_info(),
+            inv_info=inv_master.get_sch_master_info(),
+        )

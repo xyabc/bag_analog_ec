@@ -2,7 +2,7 @@ lib_name: bag_analog_ec
 cell_name: clk_invamp_diff_reset_logic
 pins: [ "VDD", "VSS", "rstn", "clkp", "clkn", "rstp", "rst" ]
 instances:
-  X2:
+  XFFB0:
     lib_name: digital_ec_templates
     cell_name: dff
     instpins:
@@ -26,7 +26,7 @@ instances:
         direction: input
         net_name: "rstp0"
         num_bits: 1
-  X1:
+  XFFB1:
     lib_name: digital_ec_templates
     cell_name: dff
     instpins:

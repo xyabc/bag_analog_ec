@@ -32,9 +32,12 @@ class bag_analog_ec__clk_invamp_diff_reset(Module):
             dictionary from parameter names to descriptions.
         """
         return dict(
+            amp_params='AC coupling amplifier schematic parameters.',
+            nor_params='NOR amplifier parameters.',
+            dig_params='digital logic parameters.',
         )
 
-    def design(self):
+    def design(self, amp_params, nor_params, dig_params):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
@@ -50,4 +53,7 @@ class bag_analog_ec__clk_invamp_diff_reset(Module):
         restore_instance()
         array_instance()
         """
-        pass
+        self.instances['XAMP'].design(**amp_params)
+        self.instances['XNORP'].design(**nor_params)
+        self.instances['XNORN'].design(**nor_params)
+        self.instances['XDIG'].design(**dig_params)

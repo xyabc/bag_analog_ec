@@ -32,9 +32,12 @@ class bag_analog_ec__clk_invamp_diff(Module):
             dictionary from parameter names to descriptions.
         """
         return dict(
+            cap_params='AC coupling cap schematic parameters.',
+            inv_params='Inverter amplifier parameters.',
+            res_params='Feedback resistor parameters.',
         )
 
-    def design(self):
+    def design(self, cap_params, inv_params, res_params):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
@@ -50,4 +53,11 @@ class bag_analog_ec__clk_invamp_diff(Module):
         restore_instance()
         array_instance()
         """
-        pass
+        self.instances['XCAPP'].design(**cap_params)
+        self.instances['XCAPN'].design(**cap_params)
+        self.instances['XAMPP'].design(**inv_params)
+        self.instances['XAMPN'].design(**inv_params)
+        self.instances['XRES'].design(**res_params)
+        res_sub_name = res_params.get('sub_name', 'VSS')
+        if res_sub_name and res_sub_name != 'VSS':
+            self.reconnect_instance_terminal('XRES', res_sub_name, res_sub_name)

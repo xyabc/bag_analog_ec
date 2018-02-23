@@ -32,9 +32,11 @@ class bag_analog_ec__clk_invamp_diff_reset_logic(Module):
             dictionary from parameter names to descriptions.
         """
         return dict(
+            flop_info='flop static master library/cell info.',
+            inv_info='inverter static master library/cell info.',
         )
 
-    def design(self):
+    def design(self, flop_info, inv_info):
         """To be overridden by subclasses to design this module.
 
         This method should fill in values for all parameters in
@@ -50,4 +52,22 @@ class bag_analog_ec__clk_invamp_diff_reset_logic(Module):
         restore_instance()
         array_instance()
         """
-        pass
+        for inst_name, clk, in_name, out_name in [('XFFB0', 'clkn', 'rstp0', 'rstn0'),
+                                                  ('XFFB1', 'clkn', 'rstn0', 'noconn'),
+                                                  ('XFFT0', 'clkp', 'rst', 'rstd'),
+                                                  ('XFFT1', 'clkn', 'rstd', 'rstp0'), ]:
+            self.replace_instance_master(inst_name, flop_info[0], flop_info[1], static=True)
+            self.reconnect_instance_terminal(inst_name, 'VDD', 'VDD')
+            self.reconnect_instance_terminal(inst_name, 'VSS', 'VSS')
+            self.reconnect_instance_terminal(inst_name, 'CLK', clk)
+            self.reconnect_instance_terminal(inst_name, 'I', in_name)
+            self.reconnect_instance_terminal(inst_name, 'O', out_name)
+        for inst_name, in_name, out_name in [('XINVB0', 'rstn0', 'rstnb'),
+                                             ('XINVB1', 'rstnb', 'rstn'),
+                                             ('XINVT0', 'rstp0', 'rstpb'),
+                                             ('XINVT1', 'rstpb', 'rstp'), ]:
+            self.replace_instance_master(inst_name, flop_info[0], flop_info[1], static=True)
+            self.reconnect_instance_terminal(inst_name, 'VDD', 'VDD')
+            self.reconnect_instance_terminal(inst_name, 'VSS', 'VSS')
+            self.reconnect_instance_terminal(inst_name, 'I', in_name)
+            self.reconnect_instance_terminal(inst_name, 'O', out_name)
