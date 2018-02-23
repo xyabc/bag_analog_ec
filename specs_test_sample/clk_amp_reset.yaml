@@ -1,7 +1,7 @@
 impl_lib: 'AAAFOO_TEST_CLK_AMP_RESET'
 impl_cell: 'CLK_AMP_RESET'
 sch_lib: 'bag_analog_ec'
-sch_cell: 'clk_amp_reset'
+sch_cell: 'clk_invamp_diff_reset'
 
 routing_grid:
   layers: [4, 5]
