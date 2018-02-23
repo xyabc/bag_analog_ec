@@ -66,5 +66,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    generate(bprj, block_specs, gen_sch=False, run_lvs=False)
-    # generate(bprj, block_specs, gen_sch=True, run_lvs=True)
+    # generate(bprj, block_specs, gen_sch=False, run_lvs=False)
+    generate(bprj, block_specs, gen_sch=True, run_lvs=False)
