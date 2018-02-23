@@ -75,13 +75,15 @@ class ClkInvAmp(TemplateBase):
         cap_params = self.params['cap_params'].copy()
         show_pins = self.params['show_pins']
 
+        top_layer = InvAmp.get_mos_conn_layer(self.grid.tech_info) + 3
+
         # make resistor and amplifiers
         res_params['sub_type'] = 'ntap'
         res_params['show_pins'] = False
+        res_params['top_layer'] = top_layer - 1
         res_master = self.new_template(params=res_params, temp_cls=ResFeedbackCore)
-        top_layer = res_master.top_layer
 
-        amp_params['top_layer'] = top_layer
+        amp_params['top_layer'] = top_layer - 1
         amp_params['show_pins'] = False
         amp_master = self.new_template(params=amp_params, temp_cls=InvAmp)
 
@@ -93,7 +95,7 @@ class ClkInvAmp(TemplateBase):
 
         h_atot = h_res + 2 * h_amp
 
-        cap_params['cap_top_layer'] = top_layer
+        cap_params['cap_top_layer'] = top_layer - 1
         cap_params['sub_name'] = ''
         cap_params['show_pins'] = False
         cap_params['cap_height'] = h_atot // 2 * self.grid.resolution
@@ -103,7 +105,8 @@ class ClkInvAmp(TemplateBase):
         w_cap = cap_master.bound_box.width_unit
         h_cap = cap_master.bound_box.height_unit
 
-        h_tot = max(h_atot, 2 * h_cap)
+        blk_h = self.grid.get_block_size(top_layer, unit_mode=True, half_blk_y=False)[1]
+        h_tot = -(-max(h_atot, 2 * h_cap) // blk_h) * blk_h
         w_atot = max(w_res, w_amp)
 
         y_capn = h_tot // 2 - h_cap
@@ -130,7 +133,7 @@ class ClkInvAmp(TemplateBase):
         amp_inp = ampp.get_all_port_pins('in')[0]
         amp_inn = ampn.get_all_port_pins('in')[0]
         inn_coord = self.grid.track_to_coord(amp_inn.layer_id, amp_inn.track_id.base_index, unit_mode=True)
-        cap_outn_tidx = self.grid.coord_to_nearest_track(top_layer + 1, inn_coord, half_track=True,
+        cap_outn_tidx = self.grid.coord_to_nearest_track(top_layer, inn_coord, half_track=True,
                                                          mode=1, unit_mode=True)
         # update MOM cap master, and add cap instances
         cap_master = cap_master.new_template_with(port_idx=(None, cap_outn_tidx))
@@ -273,6 +276,10 @@ class ClkAmpReset(TemplateBase):
         norn = self.add_instance(nor_master, 'XNORN', loc=(x_nor, y_ampn), unit_mode=True)
         norp = self.add_instance(nor_master, 'XNORP', loc=(x_nor, y_ampp), orient='MX', unit_mode=True)
         dig = self.add_instance(dig_master, 'XDIG', loc=(x_nor, y_dig), unit_mode=True)
+
+        # set size
+        tot_box = amp_inst.bound_box.merge(norp.bound_box).merge(dig.bound_box)
+        self.set_size_from_bound_box(amp_master.top_layer, tot_box)
 
         # connect supplies
         vdd_list = amp_inst.get_all_port_pins('VDD')

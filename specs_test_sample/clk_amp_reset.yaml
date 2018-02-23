@@ -14,7 +14,6 @@ params:
     res_params:
       l: 2.0e-6
       w: 0.5e-6
-      sub_type: 'ntap'
       threshold: 'standard'
       nx: 4
       ny: 6

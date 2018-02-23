@@ -52,6 +52,7 @@ class ResFeedbackCore(ResArrayBase):
             ny='number of resistors in a column.',
             em_specs='EM specifications for the termination network.',
             show_pins='True to show pins.',
+            top_layer='The top level routing layer.',
             res_options='Configuration dictionary for ResArrayBase.',
         )
 
@@ -61,6 +62,7 @@ class ResFeedbackCore(ResArrayBase):
         return dict(
             em_specs=None,
             show_pins=True,
+            top_layer=None,
             res_options=None,
         )
 
@@ -74,6 +76,7 @@ class ResFeedbackCore(ResArrayBase):
         ny = self.params['ny']
         em_specs = self.params['em_specs']
         show_pins = self.params['show_pins']
+        top_layer = self.params['top_layer']
         res_options = self.params['res_options']
 
         if nx <= 0:
@@ -85,7 +88,8 @@ class ResFeedbackCore(ResArrayBase):
 
         # draw array, make sure top layer is defined, and half-block dimensions are not allowed.
         min_tracks = (1, 1, 1, 1)
-        top_layer = self.bot_layer_id + len(min_tracks) - 1
+        if top_layer is None:
+            top_layer = self.bot_layer_id + len(min_tracks) - 1
         while not self.grid.size_defined(top_layer):
             top_layer += 1
         self.draw_array(l, w, sub_type, threshold, nx=nx, ny=ny, min_tracks=min_tracks,
