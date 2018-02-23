@@ -371,11 +371,6 @@ class Termination(TemplateBase):
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
         show_pins = self.params['show_pins']
-        res_options = self.params['res_options']
-
-        if res_options is None:
-            res_options = {}
-        res_type = res_options.get('res_type', 'standard')
 
         res_master = self.new_template(params=res_params, temp_cls=TerminationCore)
         self._sch_params = res_master.sch_params.copy()
@@ -417,7 +412,7 @@ class Termination(TemplateBase):
                                          orient='MX', unit_mode=True)
 
             # connect implant layers of resistor array and substrate contact together
-            for lay in self.grid.tech_info.get_implant_layers(sub_type, res_type=res_type):
+            for lay in self.grid.tech_info.get_well_layers(sub_type):
                 self.add_rect(lay, self.get_rect_bbox(lay))
 
             # export supplies and recompute array_box/size

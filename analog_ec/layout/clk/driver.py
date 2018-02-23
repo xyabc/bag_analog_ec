@@ -75,12 +75,6 @@ class ClkInvAmp(TemplateBase):
         cap_params = self.params['cap_params'].copy()
         show_pins = self.params['show_pins']
 
-        res_options = res_params.get('res_options', None)
-        if res_options is None:
-            res_type = 'standard'
-        else:
-            res_type = res_options.get('res_type', 'standard')
-
         # make resistor and amplifiers
         res_params['sub_type'] = 'ntap'
         res_params['show_pins'] = False
@@ -129,18 +123,8 @@ class ClkInvAmp(TemplateBase):
         res = self.add_instance(res_master, 'XRES', loc=(x_res, y_res), unit_mode=True)
 
         # merge substrate implant layers
-        sub_box = amp_master.get_substrate_box(bottom=False)[0]
-        if sub_box is not None:
-            bot_sub_box = ampn.translate_master_box(sub_box)
-            top_sub_box = ampp.translate_master_box(sub_box)
-            for lay in self.grid.tech_info.get_implant_layers('ntap', res_type):
-                if self.grid.tech_info.is_well_layer(lay):
-                    tot_box = self.get_rect_bbox(lay)
-                else:
-                    res_box = res_master.get_rect_bbox(lay)
-                    res_box = res.translate_master_box(res_box)
-                    tot_box = res_box.merge(bot_sub_box).merge(top_sub_box)
-                self.add_rect(lay, tot_box)
+        for lay in self.grid.tech_info.get_well_layers('ntap'):
+            self.add_rect(lay, self.get_rect_bbox(lay))
 
         # compute cap output port locations
         amp_inp = ampp.get_all_port_pins('in')[0]
