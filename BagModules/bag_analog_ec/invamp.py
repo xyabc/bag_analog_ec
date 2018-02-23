@@ -47,8 +47,7 @@ class bag_analog_ec__invamp(Module):
             w = w_dict[inst_type]
             th = th_dict[inst_type]
             seg = seg_dict[inst_type]
-            stack = 1
-            self.instances[inst_name].design(w=w, l=lch, seg=seg, intent=th, stack=stack)
+            self.instances[inst_name].design(w=w, l=lch, nf=seg, intent=th)
 
         # design dummies
         self.design_dummy_transistors(dum_info, 'XDUM', 'VDD', 'VSS')

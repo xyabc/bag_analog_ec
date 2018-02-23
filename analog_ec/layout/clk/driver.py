@@ -76,6 +76,7 @@ class ClkInvAmp(TemplateBase):
         show_pins = self.params['show_pins']
 
         # make resistor and amplifiers
+        res_params['sub_type'] = 'ntap'
         res_params['show_pins'] = False
         res_master = self.new_template(params=res_params, temp_cls=ResFeedbackCore)
         top_layer = res_master.top_layer

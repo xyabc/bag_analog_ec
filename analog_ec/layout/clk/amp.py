@@ -251,7 +251,7 @@ class NorAmp(AnalogBase):
         enp_idx = ndum + (seg_single - seg_enp) // 2
         invp_idx = ndum + (seg_single - seg_invp) // 2
         invn_idx = ndum + (seg_single - seg_invn) // 2
-        enn_idx = invn_idx + seg_invn + fg_sep
+        enn_idx = max(enp_idx + seg_enp, invn_idx + seg_invn + fg_sep)
         seg_tot = max(seg_single + 2 * ndum, enn_idx + seg_enn + ndum)
 
         # draw transistor rows

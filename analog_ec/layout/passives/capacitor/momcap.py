@@ -159,7 +159,7 @@ class MOMCapCore(TemplateBase):
         self.add_pin(name0, warr0, show=show_pins)
         self.add_pin(name1, warr1, show=show_pins)
 
-        res_w = top_w * self.grid.layout_unit
+        res_w = top_w * res * self.grid.layout_unit
         res_l = res_len * self.grid.layout_unit
         self._sch_params = dict(
             w=res_w,

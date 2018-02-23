@@ -42,15 +42,14 @@ class bag_analog_ec__noramp(Module):
     def design(self, lch, w_dict, th_dict, seg_dict, dum_info):
         # design main transistors
         tran_info_list = [('XP', 'invp', 'p'), ('XN', 'invn', 'n'),
-                          ('XPEN', 'enp', 'p'), ('XN', 'enn', 'n'),
+                          ('XPEN', 'enp', 'p'), ('XNEN', 'enn', 'n'),
                           ]
 
         for inst_name, inst_type, row_type in tran_info_list:
             w = w_dict[row_type]
             th = th_dict[row_type]
             seg = seg_dict[inst_type]
-            stack = 1
-            self.instances[inst_name].design(w=w, l=lch, seg=seg, intent=th, stack=stack)
+            self.instances[inst_name].design(w=w, l=lch, nf=seg, intent=th)
 
         # design dummies
         self.design_dummy_transistors(dum_info, 'XDUM', 'VDD', 'VSS')

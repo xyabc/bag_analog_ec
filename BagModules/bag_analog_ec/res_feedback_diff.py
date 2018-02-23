@@ -69,7 +69,7 @@ class bag_analog_ec__res_feedback_diff(Module):
                     neg_name = 'mid%s,out%s' % (parity, parity)
                 else:
                     pos_name = 'in%s,mid%s<%d:0>' % (parity, parity, nser - 2)
-                    neg_name = 'mid%s<%d:0>, out%s' % (parity, nser - 2, parity)
+                    neg_name = 'mid%s<%d:0>,out%s' % (parity, nser - 2, parity)
 
                 name_list = ['%s<%d:0>' % (inst_name, nser - 1)]
                 term_list = [dict(

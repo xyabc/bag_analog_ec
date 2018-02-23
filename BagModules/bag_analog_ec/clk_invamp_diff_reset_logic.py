@@ -55,7 +55,7 @@ class bag_analog_ec__clk_invamp_diff_reset_logic(Module):
         for inst_name, clk, in_name, out_name in [('XFFB0', 'clkn', 'rstp0', 'rstn0'),
                                                   ('XFFB1', 'clkn', 'rstn0', 'noconn'),
                                                   ('XFFT0', 'clkp', 'rst', 'rstd'),
-                                                  ('XFFT1', 'clkn', 'rstd', 'rstp0'), ]:
+                                                  ('XFFT1', 'clkp', 'rstd', 'rstp0'), ]:
             self.replace_instance_master(inst_name, flop_info[0], flop_info[1], static=True)
             self.reconnect_instance_terminal(inst_name, 'VDD', 'VDD')
             self.reconnect_instance_terminal(inst_name, 'VSS', 'VSS')
@@ -66,7 +66,7 @@ class bag_analog_ec__clk_invamp_diff_reset_logic(Module):
                                              ('XINVB1', 'rstnb', 'rstn'),
                                              ('XINVT0', 'rstp0', 'rstpb'),
                                              ('XINVT1', 'rstpb', 'rstp'), ]:
-            self.replace_instance_master(inst_name, flop_info[0], flop_info[1], static=True)
+            self.replace_instance_master(inst_name, inv_info[0], inv_info[1], static=True)
             self.reconnect_instance_terminal(inst_name, 'VDD', 'VDD')
             self.reconnect_instance_terminal(inst_name, 'VSS', 'VSS')
             self.reconnect_instance_terminal(inst_name, 'I', in_name)
