@@ -5,7 +5,7 @@
 from typing import Dict, Any, Set
 
 from bag.layout.template import TemplateDB
-from bag.layout.routing import TrackManager
+from bag.layout.routing import TrackID, TrackManager
 
 from abs_templates_ec.analog_core import AnalogBaseInfo, AnalogBase
 
@@ -215,9 +215,15 @@ class DiffAmpSelfBiased(AnalogBase):
         # input/output
         inn_tid = self.get_wire_id('nch', 1, 'g', wire_name='in')
         inp_tid = self.get_wire_id('pch', 0, 'g', wire_name='in')
-        out_tid = self.get_wire_id('nch', 1, 'g', wire_name='out')
         inp_idx = inp_tid.base_index
         inn_idx = inn_tid.base_index
+        in_sum2 = int(round(2 * (inp_idx + inn_idx)))
+        if in_sum2 % 2 == 1:
+            # move inp_idx down so output is centered wrt inputs
+            inp_idx -= 0.5
+            in_sum2 -= 1
+        out_tid = TrackID(hm_layer, in_sum2 / 4, width=tr_manager.get_width(hm_layer, 'out'))
+        # connect input/output
         inp, inn = self.connect_differential_tracks([ninl['g'], pinl['g']], [ninr['g'], pinr['g']],
                                                     hm_layer, inp_idx, inn_idx, width=inn_tid.width)
         out = self.connect_to_tracks([ninr[out_nin_port], pinr[out_pin_port]],
