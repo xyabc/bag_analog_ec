@@ -145,37 +145,28 @@ class OpAmpTwoStage(AnalogBase):
 
         # get tracks information
         tr_manager = TrackManager(self.grid, tr_widths, tr_spaces)
-        pg_tracks, pds_tracks, ng_tracks = [], [], []
         hm_layer = self.get_mos_conn_layer(self.grid.tech_info) + 1
         vm_layer = hm_layer + 1
 
-        # allocate tracks for outputs
-        offset = tr_manager.get_space(hm_layer, ('bias', 'out'))
-        num_ng, ng_loc = tr_manager.place_wires(hm_layer, ['out', 'out'], start_idx=offset)
-        ng_tracks.append(offset + num_ng)
-        nds_tracks = [0]
-        # allocate tracks for gm tail + bias
-        offset = tr_manager.get_space(hm_layer, ('in', 'tail'))
-        num_nout, nout_loc = tr_manager.place_wires(hm_layer, ['tail', 'bias'], start_idx=offset)
-        pds_tracks.append(offset + num_nout)
-        # allocate tracks for inputs
-        num_in, in_loc = tr_manager.place_wires(hm_layer, ['in'] * 4)
-        pg_tracks.append(num_in)
-        # allocate tracks for tail + tail/input space
-        num_tail, tail_loc = tr_manager.place_wires(hm_layer, ['tail'])
-        sp_tail_in = tr_manager.get_space(hm_layer, ('tail', 'in'))
-        pds_tracks.append(num_tail + sp_tail_in)
-        # allocate tracks for bias + bias/tail space
-        num_bias, bias_loc = tr_manager.place_wires(hm_layer, ['bias', 'bias'])
-        sp_bias_tail = tr_manager.get_space(hm_layer, ('bias', 'tail'))
-        pg_tracks.append(num_bias + sp_bias_tail)
+        # allocate tracks
+        wire_names = dict(
+            nch=[
+                dict(ds=[],
+                     g=['out', 'out']),
+            ],
+            pch=[
+                dict(ds=['bias', 'tail'],
+                     g=['in', 'in', 'in', 'in']),
+                dict(ds=['tail'],
+                     g=['bias', 'bias']),
+            ],
+        )
 
         # draw base
         self.draw_base(lch, fg_tot, ptap_w, ntap_w, nw_list, nth_list, pw_list, pth_list,
-                       ng_tracks=ng_tracks, nds_tracks=nds_tracks, pg_tracks=pg_tracks,
-                       pds_tracks=pds_tracks, n_orientations=n_orientations,
-                       p_orientations=p_orientations, guard_ring_nf=guard_ring_nf,
-                       top_layer=top_layer)
+                       tr_manager=tr_manager, wire_names=wire_names,
+                       n_orientations=n_orientations, p_orientations=p_orientations,
+                       guard_ring_nf=guard_ring_nf, top_layer=top_layer)
 
         # draw stage1 transistors
         col_left = ndum + fg_single2 + fg_single1 + min_fg_sep
@@ -220,6 +211,23 @@ class OpAmpTwoStage(AnalogBase):
         cm2r = self.draw_mos_conn('pch', 1, col_right + fg_tail2, fg_tailcm, 2, 0,
                                   stack=stack_tail, s_net='', d_net='outn')
 
+        # get track locations
+        midp_tid = self.get_wire_id('nch', 0, 'g', wire_idx=1)
+        midn_tid = self.get_wire_id('nch', 0, 'g', wire_idx=0)
+        tail2_tid = self.get_wire_id('pch', 0, 'ds', wire_name='tail')
+        bias2_tid = self.get_wire_id('pch', 0, 'ds', wire_name='bias')
+        inc1_tid = self.get_wire_id('pch', 0, 'g', wire_idx=3)
+        inp_tid = self.get_wire_id('pch', 0, 'g', wire_idx=2)
+        inn_tid = self.get_wire_id('pch', 0, 'g', wire_idx=1)
+        inc2_tid = self.get_wire_id('pch', 0, 'g', wire_idx=0)
+        tail1_tid = self.get_wire_id('pch', 1, 'ds', wire_name='tail')
+        cm_tid = self.get_wire_id('pch', 1, 'g', wire_idx=1)
+        bias1_tid = self.get_wire_id('pch', 1, 'g', wire_idx=0)
+        w_bias = cm_tid.width
+        w_tail = tail1_tid.width
+        w_out = midp_tid.width
+        w_in = inp_tid.width
+
         # draw connections
         # connect VDD/VSS
         self.connect_to_substrate('ntap', [bias1l['s'], biasm['s'], bias1r['s'], cm2l['s'],
@@ -228,55 +236,40 @@ class OpAmpTwoStage(AnalogBase):
                                            diode2l['s'], ngm2l['s'], ngm2r['s'], diode2r['s']])
 
         # connect bias/tail wires
-        w_bias = tr_manager.get_width(hm_layer, 'bias')
-        w_tail = tr_manager.get_width(hm_layer, 'tail')
-        cm_tidx = self.get_track_index('pch', 1, 'g', bias_loc[0])
-        bias1_tidx = self.get_track_index('pch', 1, 'g', bias_loc[1])
-        tail1_tidx = self.get_track_index('pch', 1, 'ds', tail_loc[0])
-        tail2_tidx = self.get_track_index('pch', 0, 'ds', nout_loc[0])
-        bias2_tid = self.make_track_id('pch', 0, 'ds', nout_loc[1], width=w_bias)
-
         self.connect_differential_tracks([inl['d'], inr['d'], bias1l['d'], bias1r['d']],
-                                         [biasm['d'], inm['d']], hm_layer, tail2_tidx,
-                                         tail1_tidx, width=w_tail)
+                                         [biasm['d'], inm['d']], hm_layer, tail2_tid.base_index,
+                                         tail1_tid.base_index, width=w_tail)
         bias2 = self.connect_to_tracks(inm['s'], bias2_tid)
 
         bias1_warrs = [bias1l['g'], biasm['g'], bias1r['g'], bias2l['g'], bias2r['g']]
         cm_warrs = [cm2l['g'], cm2r['g']]
         bias1, cmbias = self.connect_differential_tracks(bias1_warrs, cm_warrs, hm_layer,
-                                                         bias1_tidx, cm_tidx,
+                                                         bias1_tid.base_index, cm_tid.base_index,
                                                          width=w_bias)
         mid_tid = self.grid.coord_to_nearest_track(vm_layer, bias1.middle)
         bias_vtid = TrackID(vm_layer, mid_tid, width=tr_manager.get_width(vm_layer, 'bias'))
         bias = self.connect_to_tracks([bias1, bias2], bias_vtid)
 
         # connect middle wires
-        w_out = tr_manager.get_width(hm_layer, 'out')
-        midp_tidx = self.get_track_index('nch', 0, 'g', ng_loc[0])
-        midn_tidx = self.get_track_index('nch', 0, 'g', ng_loc[1])
         midp_warrs = [inr['s'], ngm1r['s'], diode1r['s'], diode1r['g'], ngm1l['g'],
                       diode2r['g'], ngm2r['g']]
         midn_warrs = [inl['s'], ngm1l['s'], diode1l['s'], diode1l['g'], ngm1r['g'],
                       diode2l['g'], ngm2l['g']]
         midp, midn = self.connect_differential_tracks(midp_warrs, midn_warrs, hm_layer,
-                                                      midp_tidx, midn_tidx, width=w_out)
+                                                      midp_tid.base_index, midn_tid.base_index,
+                                                      width=w_out)
 
         # connect inputs
-        w_in = tr_manager.get_width(hm_layer, 'in')
-        inc1_tidx = self.get_track_index('pch', 0, 'g', in_loc[0])
-        inp_tidx = self.get_track_index('pch', 0, 'g', in_loc[1])
-        inn_tidx = self.get_track_index('pch', 0, 'g', in_loc[2])
-        inc2_tidx = self.get_track_index('pch', 0, 'g', in_loc[3])
         inc1_warrs = inc2_warrs = inm['g']
         inp_warrs = inl['g']
         inn_warrs = inr['g']
+        inp_tidx, inn_tidx = inp_tid.base_index, inn_tid.base_index
         inc1, inp, inn, inc2 = self.connect_matching_tracks(
-            [inc1_warrs, inp_warrs, inn_warrs, inc2_warrs],
-            hm_layer, [inc1_tidx, inp_tidx, inn_tidx, inc2_tidx],
-            width=w_in)
+            [inc1_warrs, inp_warrs, inn_warrs, inc2_warrs], hm_layer,
+            [inc1_tid.base_index, inp_tidx, inn_tidx, inc2_tid.base_index], width=w_in)
 
         # connect outputs
-        out_tidx = (int((inp_tidx + inn_tidx) * 2) // 2) / 2
+        out_tidx = self.grid.get_middle_track(inp_tidx, inn_tidx)
         outp = self.connect_to_tracks([diode2l['d'], ngm2l['d'], bias2l['d'], cm2l['d']],
                                       TrackID(hm_layer, out_tidx, width=w_out))
         outn = self.connect_to_tracks([diode2r['d'], ngm2r['d'], bias2r['d'], cm2r['d']],
