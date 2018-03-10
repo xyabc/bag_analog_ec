@@ -8,7 +8,7 @@ import yaml
 from bag.io import read_yaml, open_file
 from bag.core import BagProject
 
-from ckt_dsn_ec.mos.core import MOSDBDiscrete
+from verification_ec.mos.query import MOSDBDiscrete
 from ckt_dsn_ec.analog.amplifier.opamp_two_stage import OpAmpTwoStage, OpAmpTwoStageChar
 
 
@@ -29,14 +29,13 @@ def design(top_specs, nch_db, pch_db):
 
 def design_only():
     interp_method = 'spline'
-    w_list = [4]
     nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
     pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
 
     print('create transistor database')
-    nch_db = MOSDBDiscrete(nch_conf_list, method=interp_method, cfit_method='average')
-    pch_db = MOSDBDiscrete(pch_conf_list, method=interp_method, cfit_method='average')
+    nch_db = MOSDBDiscrete(nch_conf_list, interp_method=interp_method)
+    pch_db = MOSDBDiscrete(pch_conf_list, interp_method=interp_method)
 
     top_specs = read_yaml(amp_specs_fname)
     design(top_specs, nch_db, pch_db)
@@ -44,7 +43,6 @@ def design_only():
 
 def design_close_loop(prj, max_iter=100):
     interp_method = 'spline'
-    w_list = [4]
     nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
     pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
@@ -55,8 +53,8 @@ def design_close_loop(prj, max_iter=100):
     k_min = 1.1
 
     print('create transistor database')
-    nch_db = MOSDBDiscrete(nch_conf_list, method=interp_method, cfit_method='average')
-    pch_db = MOSDBDiscrete(pch_conf_list, method=interp_method, cfit_method='average')
+    nch_db = MOSDBDiscrete(nch_conf_list, interp_method=interp_method)
+    pch_db = MOSDBDiscrete(pch_conf_list, interp_method=interp_method)
 
     top_specs = read_yaml(amp_specs_fname)
     f_unit_dsn_targ = f_unit_targ = top_specs['dsn_specs']['f_unit']
@@ -121,6 +119,6 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    design_close_loop(bprj, max_iter=10)
-    # design_only()
+    # design_close_loop(bprj, max_iter=10)
+    design_only()
     # plot_data(bprj)
