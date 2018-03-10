@@ -2,12 +2,14 @@
 
 """This package contain layout classes for operational amplifiers."""
 
-from typing import Dict, Any, Set
+from typing import TYPE_CHECKING, Dict, Any, Set
 
-from bag.layout.template import TemplateDB
 from bag.layout.routing import TrackID, TrackManager
 
 from abs_templates_ec.analog_core import AnalogBaseInfo, AnalogBase
+
+if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
 
 
 class OpAmpTwoStage(AnalogBase):
@@ -32,25 +34,18 @@ class OpAmpTwoStage(AnalogBase):
     """
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
-        # type: (TemplateDB, str, Dict[str, Any], Set[str], **Any) -> None
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         AnalogBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
     def get_params_info(cls):
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : dict[str, str]
-            dictionary from parameter name to description.
-        """
+        # type: () -> Dict[str, str]
         return dict(
             lch='channel length, in meters.',
             ptap_w='NMOS substrate width, in meters/number of fins.',
@@ -63,12 +58,13 @@ class OpAmpTwoStage(AnalogBase):
             tr_widths='signal wire width dictionary.',
             tr_spaces='signal wire space dictionary.',
             show_pins='True to create pin labels.',
-            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable guard ring.',
+            guard_ring_nf='Width of the guard ring, in number of fingers.  0 to disable.',
             top_layer='The AnalogBase top layer.',
         )
 
     @classmethod
     def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
         return dict(
             show_pins=True,
             guard_ring_nf=0,
@@ -138,9 +134,6 @@ class OpAmpTwoStage(AnalogBase):
         fg_single1 = max(fg_in, fg_load)
         fg_single2 = max(fg_bias2, fg_in2)
         fg_tot = 2 * (fg_single1 + fg_single2 + ndum) + 4 * min_fg_sep + fg_ref
-        ndum_tail = fg_tot - 2 * fg_in - 2 * fg_bias2 - fg_ref
-        ndum_in = fg_tot - 2 * fg_in - fg_ref - 6
-        ndum_load = fg_tot - 2 * fg_load - 2 * fg_in2 - 4
 
         # get width/threshold/orientation info
         nw_list = [w_dict['load']]
@@ -179,8 +172,9 @@ class OpAmpTwoStage(AnalogBase):
 
         # draw base
         self.draw_base(lch, fg_tot, ptap_w, ntap_w, nw_list, nth_list, pw_list, pth_list,
-                       ng_tracks=ng_tracks, nds_tracks=nds_tracks, pg_tracks=pg_tracks, pds_tracks=pds_tracks,
-                       n_orientations=n_orientations, p_orientations=p_orientations, guard_ring_nf=guard_ring_nf,
+                       ng_tracks=ng_tracks, nds_tracks=nds_tracks, pg_tracks=pg_tracks,
+                       pds_tracks=pds_tracks, n_orientations=n_orientations,
+                       p_orientations=p_orientations, guard_ring_nf=guard_ring_nf,
                        top_layer=top_layer)
 
         # draw stage1 transistors
@@ -228,8 +222,8 @@ class OpAmpTwoStage(AnalogBase):
 
         # draw connections
         # connect VDD/VSS
-        self.connect_to_substrate('ntap', [bias1l['s'], biasm['s'], bias1r['s'], cm2l['s'], cm2r['s'],
-                                           bias2l['s'], bias2r['s']])
+        self.connect_to_substrate('ntap', [bias1l['s'], biasm['s'], bias1r['s'], cm2l['s'],
+                                           cm2r['s'], bias2l['s'], bias2r['s']])
         self.connect_to_substrate('ptap', [diode1l['d'], ngm1l['d'], ngm1r['d'], diode1r['d'],
                                            diode2l['s'], ngm2l['s'], ngm2r['s'], diode2r['s']])
 
@@ -242,13 +236,15 @@ class OpAmpTwoStage(AnalogBase):
         tail2_tidx = self.get_track_index('pch', 0, 'ds', nout_loc[0])
         bias2_tid = self.make_track_id('pch', 0, 'ds', nout_loc[1], width=w_bias)
 
-        self.connect_differential_tracks([inl['d'], inr['d'], bias1l['d'], bias1r['d']], [biasm['d'], inm['d']],
-                                         hm_layer, tail2_tidx, tail1_tidx, width=w_tail)
+        self.connect_differential_tracks([inl['d'], inr['d'], bias1l['d'], bias1r['d']],
+                                         [biasm['d'], inm['d']], hm_layer, tail2_tidx,
+                                         tail1_tidx, width=w_tail)
         bias2 = self.connect_to_tracks(inm['s'], bias2_tid)
 
         bias1_warrs = [bias1l['g'], biasm['g'], bias1r['g'], bias2l['g'], bias2r['g']]
         cm_warrs = [cm2l['g'], cm2r['g']]
-        bias1, cmbias = self.connect_differential_tracks(bias1_warrs, cm_warrs, hm_layer, bias1_tidx, cm_tidx,
+        bias1, cmbias = self.connect_differential_tracks(bias1_warrs, cm_warrs, hm_layer,
+                                                         bias1_tidx, cm_tidx,
                                                          width=w_bias)
         mid_tid = self.grid.coord_to_nearest_track(vm_layer, bias1.middle)
         bias_vtid = TrackID(vm_layer, mid_tid, width=tr_manager.get_width(vm_layer, 'bias'))
@@ -258,8 +254,10 @@ class OpAmpTwoStage(AnalogBase):
         w_out = tr_manager.get_width(hm_layer, 'out')
         midp_tidx = self.get_track_index('nch', 0, 'g', ng_loc[0])
         midn_tidx = self.get_track_index('nch', 0, 'g', ng_loc[1])
-        midp_warrs = [inr['s'], ngm1r['s'], diode1r['s'], diode1r['g'], ngm1l['g'], diode2r['g'], ngm2r['g']]
-        midn_warrs = [inl['s'], ngm1l['s'], diode1l['s'], diode1l['g'], ngm1r['g'], diode2l['g'], ngm2l['g']]
+        midp_warrs = [inr['s'], ngm1r['s'], diode1r['s'], diode1r['g'], ngm1l['g'],
+                      diode2r['g'], ngm2r['g']]
+        midn_warrs = [inl['s'], ngm1l['s'], diode1l['s'], diode1l['g'], ngm1r['g'],
+                      diode2l['g'], ngm2l['g']]
         midp, midn = self.connect_differential_tracks(midp_warrs, midn_warrs, hm_layer,
                                                       midp_tidx, midn_tidx, width=w_out)
 
@@ -272,9 +270,10 @@ class OpAmpTwoStage(AnalogBase):
         inc1_warrs = inc2_warrs = inm['g']
         inp_warrs = inl['g']
         inn_warrs = inr['g']
-        inc1, inp, inn, inc2 = self.connect_matching_tracks([inc1_warrs, inp_warrs, inn_warrs, inc2_warrs],
-                                                            hm_layer, [inc1_tidx, inp_tidx, inn_tidx, inc2_tidx],
-                                                            width=w_in)
+        inc1, inp, inn, inc2 = self.connect_matching_tracks(
+            [inc1_warrs, inp_warrs, inn_warrs, inc2_warrs],
+            hm_layer, [inc1_tidx, inp_tidx, inn_tidx, inc2_tidx],
+            width=w_in)
 
         # connect outputs
         out_tidx = (int((inp_tidx + inn_tidx) * 2) // 2) / 2
