@@ -24,13 +24,6 @@ class bag_analog_ec__invamp(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             lch='Channel length, in meters.',
             w_dict='Transistor width dictionary.',

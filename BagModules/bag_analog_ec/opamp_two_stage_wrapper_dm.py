@@ -9,14 +9,16 @@ from bag import float_to_si_string
 from bag.design import Module
 
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'opamp_two_stage_wrapper_dm.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__,
+                                            os.path.join('netlist_info',
+                                                         'opamp_two_stage_wrapper_dm.yaml'))
 
 
 # noinspection PyPep8Naming
 class bag_analog_ec__opamp_two_stage_wrapper_dm(Module):
     """Module for library bag_analog_ec cell opamp_two_stage_wrapper_dm.
 
-    Fill in high level description here.
+    A schematic wrapper class for opamp_two_stage.
     """
 
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
@@ -25,13 +27,6 @@ class bag_analog_ec__opamp_two_stage_wrapper_dm(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             dut_lib='Device-under-test library name.',
             dut_cell='Device-under-test cell name.',

@@ -7,7 +7,8 @@ import pkg_resources
 
 from bag.design import Module
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'diffamp_self_biased.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info',
+                                                                   'diffamp_self_biased.yaml'))
 
 
 # noinspection PyPep8Naming
@@ -23,13 +24,6 @@ class bag_analog_ec__diffamp_self_biased(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             lch='Channel length, in meters.',
             w_dict='Transistor width dictionary.',

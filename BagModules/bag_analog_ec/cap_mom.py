@@ -15,7 +15,7 @@ yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info
 class bag_analog_ec__cap_mom(Module):
     """Module for library bag_analog_ec cell cap_mom.
 
-    Fill in high level description here.
+    A MOM cap schematic.
     """
 
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
@@ -24,13 +24,6 @@ class bag_analog_ec__cap_mom(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             w='metal resistor width, in meters.',
             l='metal resistor length, in meters.',
@@ -46,21 +39,6 @@ class bag_analog_ec__cap_mom(Module):
         )
 
     def design(self, w, l, layer, sub_name):
-        """To be overridden by subclasses to design this module.
-
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
-
-        To modify schematic structure, call:
-
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
-        """
         self.instances['XP'].design(w=w, l=l, layer=layer)
         self.instances['XN'].design(w=w, l=l, layer=layer)
 

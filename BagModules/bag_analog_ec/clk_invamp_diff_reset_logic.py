@@ -8,7 +8,9 @@ import pkg_resources
 from bag.design import Module
 
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'clk_invamp_diff_reset_logic.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__,
+                                            os.path.join('netlist_info',
+                                                         'clk_invamp_diff_reset_logic.yaml'))
 
 
 # noinspection PyPep8Naming
@@ -24,34 +26,12 @@ class bag_analog_ec__clk_invamp_diff_reset_logic(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             flop_info='flop static master library/cell info.',
             inv_info='inverter static master library/cell info.',
         )
 
     def design(self, flop_info, inv_info):
-        """To be overridden by subclasses to design this module.
-
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
-
-        To modify schematic structure, call:
-
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
-        """
         for inst_name, clk, in_name, out_name in [('XFFB0', 'clkn', 'rstp0', 'rstn0'),
                                                   ('XFFB1', 'clkn', 'rstn0', 'noconn'),
                                                   ('XFFT0', 'clkp', 'rst', 'rstd'),

@@ -8,14 +8,15 @@ import pkg_resources
 from bag.design import Module
 
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'pch_stack.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info',
+                                                                   'pch_stack.yaml'))
 
 
 # noinspection PyPep8Naming
 class bag_analog_ec__pch_stack(Module):
     """Module for library bag_analog_ec cell pch_stack.
 
-    Fill in high level description here.
+    A transistor with optional stack parameter.
     """
 
     def __init__(self, bag_config, parent=None, prj=None, **kwargs):
@@ -24,13 +25,6 @@ class bag_analog_ec__pch_stack(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             w='Transistor width in meters or number of fins.',
             l='Transistor length in meters.',
@@ -48,21 +42,6 @@ class bag_analog_ec__pch_stack(Module):
         )
 
     def design(self, w, l, seg, intent, stack):
-        """To be overridden by subclasses to design this module.
-
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
-
-        To modify schematic structure, call:
-
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
-        """
         if seg == 1:
             raise ValueError('Cannot make 1 finger transistor.')
 

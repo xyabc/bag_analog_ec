@@ -7,8 +7,8 @@ import pkg_resources
 
 from bag.design import Module
 
-
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'opamp_two_stage.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info',
+                                                                   'opamp_two_stage.yaml'))
 
 
 # noinspection PyPep8Naming
@@ -24,13 +24,6 @@ class bag_analog_ec__opamp_two_stage(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
             lch='Channel length, in meters.',
             w_dict='Dictionary of transistor widths.',
@@ -67,23 +60,37 @@ class bag_analog_ec__opamp_two_stage(Module):
         stack_diode = stack_dict['diode']
         stack_ngm = stack_dict['ngm']
 
-        self.instances['XTAIL'].design(w=w_tail, l=lch, seg=seg_tail1 * 2, intent=th_tail, stack=stack_tail)
-        self.instances['XTAIL2L'].design(w=w_tail, l=lch, seg=seg_tail2, intent=th_tail, stack=stack_tail)
-        self.instances['XTAIL2R'].design(w=w_tail, l=lch, seg=seg_tail2, intent=th_tail, stack=stack_tail)
-        self.instances['XCML'].design(w=w_tail, l=lch, seg=seg_tailcm, intent=th_tail, stack=stack_tail)
-        self.instances['XCMR'].design(w=w_tail, l=lch, seg=seg_tailcm, intent=th_tail, stack=stack_tail)
-        self.instances['XREF'].design(w=w_tail, l=lch, seg=seg_ref, intent=th_tail, stack=stack_tail)
+        self.instances['XTAIL'].design(w=w_tail, l=lch, seg=seg_tail1 * 2, intent=th_tail,
+                                       stack=stack_tail)
+        self.instances['XTAIL2L'].design(w=w_tail, l=lch, seg=seg_tail2, intent=th_tail,
+                                         stack=stack_tail)
+        self.instances['XTAIL2R'].design(w=w_tail, l=lch, seg=seg_tail2, intent=th_tail,
+                                         stack=stack_tail)
+        self.instances['XCML'].design(w=w_tail, l=lch, seg=seg_tailcm, intent=th_tail,
+                                      stack=stack_tail)
+        self.instances['XCMR'].design(w=w_tail, l=lch, seg=seg_tailcm, intent=th_tail,
+                                      stack=stack_tail)
+        self.instances['XREF'].design(w=w_tail, l=lch, seg=seg_ref, intent=th_tail,
+                                      stack=stack_tail)
         self.instances['XINL'].design(w=w_in, l=lch, seg=seg_in, intent=th_in, stack=stack_in)
         self.instances['XINR'].design(w=w_in, l=lch, seg=seg_in, intent=th_in, stack=stack_in)
         self.instances['XRES'].design(w=w_in, l=lch, seg=seg_ref, intent=th_in, stack=stack_in)
-        self.instances['XDIOL'].design(w=w_load, l=lch, seg=seg_diode1, intent=th_load, stack=stack_diode)
-        self.instances['XDIOR'].design(w=w_load, l=lch, seg=seg_diode1, intent=th_load, stack=stack_diode)
-        self.instances['XNGML'].design(w=w_load, l=lch, seg=seg_ngm1, intent=th_load, stack=stack_ngm)
-        self.instances['XNGMR'].design(w=w_load, l=lch, seg=seg_ngm1, intent=th_load, stack=stack_ngm)
-        self.instances['XDIO2L'].design(w=w_load, l=lch, seg=seg_diode2, intent=th_load, stack=stack_diode)
-        self.instances['XDIO2R'].design(w=w_load, l=lch, seg=seg_diode2, intent=th_load, stack=stack_diode)
-        self.instances['XNGM2L'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load, stack=stack_ngm)
-        self.instances['XNGM2R'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load, stack=stack_ngm)
+        self.instances['XDIOL'].design(w=w_load, l=lch, seg=seg_diode1, intent=th_load,
+                                       stack=stack_diode)
+        self.instances['XDIOR'].design(w=w_load, l=lch, seg=seg_diode1, intent=th_load,
+                                       stack=stack_diode)
+        self.instances['XNGML'].design(w=w_load, l=lch, seg=seg_ngm1, intent=th_load,
+                                       stack=stack_ngm)
+        self.instances['XNGMR'].design(w=w_load, l=lch, seg=seg_ngm1, intent=th_load,
+                                       stack=stack_ngm)
+        self.instances['XDIO2L'].design(w=w_load, l=lch, seg=seg_diode2, intent=th_load,
+                                        stack=stack_diode)
+        self.instances['XDIO2R'].design(w=w_load, l=lch, seg=seg_diode2, intent=th_load,
+                                        stack=stack_diode)
+        self.instances['XNGM2L'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load,
+                                        stack=stack_ngm)
+        self.instances['XNGM2R'].design(w=w_load, l=lch, seg=seg_ngm2, intent=th_load,
+                                        stack=stack_ngm)
 
         # design dummies
         self.design_dummy_transistors(dum_info, 'XDUM', 'VDD', 'VSS')
