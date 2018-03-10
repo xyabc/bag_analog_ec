@@ -1,0 +1,44 @@
+impl_lib: 'AAAFOO_TEST_OPAMP_TWO_STAGE'
+impl_cell: 'OPAMP_TWO_STAGE'
+sch_lib: 'bag_analog_ec'
+sch_cell: 'opamp_two_stage'
+
+routing_grid:
+  layers: [4, 5]
+  widths: [0.1, 0.1]
+  spaces: [0.1, 0.1]
+  bot_dir: 'x'
+
+params:
+  lch: 20.0e-9
+  ptap_w: 6
+  ntap_w: 6
+  w_dict:
+    load: 4
+    in: 4
+    tail: 4
+  th_dict:
+    load: 'standard'
+    in: 'standard'
+    tail: 'standard'
+  seg_dict:
+    tail1: 4
+    tail2: 4
+    tailcm: 4
+    in: 4
+    ref: 4
+    diode1: 2
+    ngm1: 2
+    diode2: 2
+    ngm2: 2
+  stack_dict:
+    tail: 2
+    in: 2
+    diode: 2
+    ngm: 2
+  ndum: 4
+  tr_widths: {}
+  tr_spaces: {}
+  show_pins: True
+  guard_ring_nf: 0
+  top_layer: !!null
