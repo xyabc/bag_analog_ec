@@ -29,8 +29,8 @@ def design(top_specs, nch_db, pch_db):
 
 def design_only():
     interp_method = 'spline'
-    nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
-    pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
+    nch_conf_list = ['data/nch_w4_stack/specs.yaml', ]
+    pch_conf_list = ['data/pch_w4_stack/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
 
     print('create transistor database')
@@ -43,8 +43,8 @@ def design_only():
 
 def design_close_loop(prj, max_iter=100):
     interp_method = 'spline'
-    nch_conf_list = ['data/mos_char_nch_stack_w4_vbs/specs.yaml', ]
-    pch_conf_list = ['data/mos_char_pch_stack_w4_vbs/specs.yaml', ]
+    nch_conf_list = ['data/nch_w4_stack/specs.yaml', ]
+    pch_conf_list = ['data/pch_w4_stack/specs.yaml', ]
     amp_specs_fname = 'specs_design/opamp_two_stage_1e8.yaml'
     ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
     iter_cnt = 0
@@ -97,16 +97,6 @@ def design_close_loop(prj, max_iter=100):
     print('gain = %s' % gain_list)
 
     return dsn_info
-
-
-def plot_data(prj):
-    ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
-    sim = OpAmpTwoStageChar(prj, ver_specs_fname)
-
-    sim.process_dc_data(plot=True)
-    sim.process_ac_data(plot=True)
-    import matplotlib.pyplot as plt
-    plt.show()
 
 
 if __name__ == '__main__':
