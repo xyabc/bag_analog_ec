@@ -89,8 +89,8 @@ class ResLadderCore(ResArrayBase):
         # compute min tracks
         hcon_space = 0
         vcon_space = 0
-        min_tracks = (4 + 2 * hcon_space, 7 + vcon_space, nx)
-        top_layer = self.bot_layer_id + 2
+        min_tracks = (4 + 2 * hcon_space, 7 + vcon_space, nx, 1)
+        top_layer = self.bot_layer_id + 3
         self.draw_array(l, w, sub_type, threshold, nx=nx + 2 * ndum, ny=ny + 2 * ndum,
                         min_tracks=min_tracks, top_layer=top_layer, connect_up=True, **res_options)
 
@@ -146,8 +146,8 @@ class ResLadderCore(ResArrayBase):
                                     hcon_idx_list, vcon_idx_list)
 
     def _connect_power(self, ny, ndum, hcon_idx_list, vcon_idx_list, xm_bot_idx, num_xm_sup):
-        hm_off, vm_off, xm_off, _ = self.get_track_offsets(ny + ndum, ndum)
-        _, vm_prev, _, _ = self.get_track_offsets(ndum, ndum - 1)
+        hm_off, vm_off, xm_off = self.get_track_offsets(ny + ndum, ndum)[:3]
+        vm_prev = self.get_track_offsets(ndum, ndum - 1)[1]
         hm_layer = self.bot_layer_id
         vm_layer = hm_layer + 1
         hconn = hcon_idx_list[0]
@@ -163,8 +163,8 @@ class ResLadderCore(ResArrayBase):
 
     def _connect_ground(self, nx, ndum, hcon_idx_list, vcon_idx_list, xm_bot_idx, num_xm_sup):
         xm_prev = self.get_track_offsets(ndum - 1, ndum)[2]
-        hm_off, vm_off, xm_off, _ = self.get_track_offsets(ndum, ndum)
-        _, vm_prev, _, _ = self.get_track_offsets(ndum, ndum - 1)
+        hm_off, vm_off, xm_off = self.get_track_offsets(ndum, ndum)[:3]
+        vm_prev = self.get_track_offsets(ndum, ndum - 1)[1]
         hm_layer = self.bot_layer_id
         vm_layer = hm_layer + 1
         hconn = hcon_idx_list[0]
@@ -185,7 +185,7 @@ class ResLadderCore(ResArrayBase):
 
     def _connect_dummy(self, row_idx, col_idx, conn_tb, tp_idx, bp_idx,
                        hcon_idx_list, vcon_idx_list):
-        hm_off, vm_off, _, _ = self.get_track_offsets(row_idx, col_idx)
+        hm_off, vm_off = self.get_track_offsets(row_idx, col_idx)[:2]
         hm_layer = self.bot_layer_id
         self.add_via_on_grid(hm_layer, hm_off + tp_idx, vm_off + vcon_idx_list[3])
         self.add_via_on_grid(hm_layer, hm_off + tp_idx, vm_off + vcon_idx_list[-4])
@@ -199,8 +199,8 @@ class ResLadderCore(ResArrayBase):
 
     def _connect_lr(self, row_idx, col_idx, nx, ndum, tp_idx, bp_idx, hcon_idx_list,
                     vcon_idx_list, xm_bot_idx):
-        hm_off, vm_off, xm_off, _ = self.get_track_offsets(row_idx, col_idx)
-        _, vm_next, _, _ = self.get_track_offsets(row_idx, col_idx + 1)
+        hm_off, vm_off, xm_off = self.get_track_offsets(row_idx, col_idx)[:3]
+        vm_next = self.get_track_offsets(row_idx, col_idx + 1)[1]
         hm_layer = self.bot_layer_id
         col_real = col_idx - ndum
         row_real = row_idx - ndum
@@ -227,8 +227,8 @@ class ResLadderCore(ResArrayBase):
     def _connect_tb(self, row_idx, col_idx, ndum, tp_idx, hcon_idx_list,
                     vcon_idx_list, xm_bot_idx, mode=0):
         # mode = 0 is normal connection, mode = 1 is vdd connection, mode = -1 is vss connection
-        hm_off, vm_off, _, _ = self.get_track_offsets(row_idx, col_idx)
-        hm_next, _, xm_next, _ = self.get_track_offsets(row_idx + 1, col_idx)
+        hm_off, vm_off = self.get_track_offsets(row_idx, col_idx)[:2]
+        hm_next, _, xm_next = self.get_track_offsets(row_idx + 1, col_idx)[:3]
         hm_layer = self.bot_layer_id
         if col_idx == ndum:
             conn1 = vcon_idx_list[1]
@@ -281,7 +281,7 @@ class ResLadderCore(ResArrayBase):
         blk_w, blk_h = self.res_unit_size
 
         # find top X layer track index that can be connected to supply.
-        hm_off, vm_off, xm_off, _ = self.get_track_offsets(0, 0)
+        hm_off, vm_off, xm_off = self.get_track_offsets(0, 0)[:3]
         vm_y1 = max(grid.get_wire_bounds(hm_layer, hm_off + max(bp_idx, bcon_idx),
                                          unit_mode=True)[1] + vm_ext,
                     grid.get_wire_bounds(xm_layer, xm_off + xm_bot_idx,
@@ -298,7 +298,7 @@ class ResLadderCore(ResArrayBase):
         # expand range by +/- 1 to draw metal pattern on dummies too
         for row_idx in range(ny + 2 * ndum):
             for col_idx in range(nx + 2 * ndum):
-                hm_off, vm_off, xm_off, _ = self.get_track_offsets(row_idx, col_idx)
+                hm_off, vm_off, xm_off = self.get_track_offsets(row_idx, col_idx)[:3]
 
                 # extend port tracks on hm layer
                 hm_lower, _ = grid.get_wire_bounds(vm_layer, vm_off + vm_tidx[1], unit_mode=True)

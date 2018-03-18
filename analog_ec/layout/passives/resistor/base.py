@@ -99,7 +99,7 @@ class ResSubstrateWrapper(TemplateBase):
                 lch=sub_lch,
                 w=sub_w,
                 sub_type=sub_type,
-                threshold=self.params['threshold'],
+                threshold=params['threshold'],
                 port_width=sub_tr_w,
                 well_width=res_master.get_well_width(),
                 show_pins=False,
