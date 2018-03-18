@@ -9,10 +9,11 @@ import math
 from itertools import chain
 
 from bag.layout.routing import TrackID
-from bag.layout.template import TemplateBase, TemplateDB
+from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase
-from abs_templates_ec.analog_core.substrate import SubstrateContact
+
+from .base import ResSubstrateWrapper
 
 if TYPE_CHECKING:
     from bag.layout.routing import WireArray
@@ -27,9 +28,9 @@ class TerminationCore(ResArrayBase):
             the template database.
     lib_name : str
         the layout library name.
-    params : dict[str, any]
+    params : Dict[str, Any]
         the parameter values.
-    used_names : set[str]
+    used_names : Set[str]
         a set of already used cell names.
     **kwargs :
         dictionary of optional parameters.  See documentation of
@@ -126,7 +127,8 @@ class TerminationCore(ResArrayBase):
         else:
             lay_start, port_wires = self._connect_vertical(nx, ny, ndum)
 
-        self._connect_up(port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins)
+        self._connect_up(port_layer, port_width, lay_start, ndum, npar, port_wires,
+                         dum_warrs, show_pins)
 
         # set schematic parameters
         ndum_tot = 2 * ndum * (nx + ny - 2 * ndum)
@@ -141,7 +143,8 @@ class TerminationCore(ResArrayBase):
             sub_name='',
         )
 
-    def _connect_up(self, port_layer, port_width, lay_start, ndum, npar, port_wires, dum_warrs, show_pins):
+    def _connect_up(self, port_layer, port_width, lay_start, ndum, npar, port_wires,
+                    dum_warrs, show_pins):
         direction = self.grid.get_direction(port_layer)
         last_dir = 'y' if direction == 'x' else 'x'
         for next_layer in range(lay_start, port_layer + 1):
@@ -177,12 +180,14 @@ class TerminationCore(ResArrayBase):
                     base_idx = self.get_abs_track_index(next_layer, ndum, base_idx_rel)
                     tid = TrackID(next_layer, base_idx, width=next_w, num=npar, pitch=cur_p)
                     for warrs_idx in range(3):
-                        port_wires[warrs_idx] = [self.connect_to_tracks(port_wires[warrs_idx], tid, min_len_mode=0)]
+                        port_wires[warrs_idx] = [self.connect_to_tracks(port_wires[warrs_idx],
+                                                                        tid, min_len_mode=0)]
             else:
                 # layer direction is the same.  Strap wires to current layer.
                 for warrs_idx in range(3):
                     cur_warrs = port_wires[warrs_idx]
-                    new_warrs = [self.strap_wires(warr, next_layer, tr_w_list=[next_w], min_len_mode_list=[0])
+                    new_warrs = [self.strap_wires(warr, next_layer, tr_w_list=[next_w],
+                                                  min_len_mode_list=[0])
                                  for warr in cur_warrs]
                     port_wires[warrs_idx] = new_warrs
 
@@ -213,12 +218,15 @@ class TerminationCore(ResArrayBase):
                 ports_b = self.get_res_ports(row_idx, col_idx)
                 ports_t = self.get_res_ports(row_idx + 1, col_idx)
                 con_par = (col_idx + row_idx) % 2
-                mid_wire = self.connect_to_tracks([ports_b[con_par], ports_t[con_par]], tr_id_sel[con_par])
+                mid_wire = self.connect_to_tracks([ports_b[con_par], ports_t[con_par]],
+                                                  tr_id_sel[con_par])
                 if row_idx == ndum:
-                    bot_wire = self.connect_to_tracks([ports_b[1 - con_par]], tr_id_sel[1 - con_par], min_len_mode=0)
+                    bot_wire = self.connect_to_tracks([ports_b[1 - con_par]],
+                                                      tr_id_sel[1 - con_par], min_len_mode=0)
                     port_wires[0].append(bot_wire)
                 if row_idx == ny - ndum - 2:
-                    top_wire = self.connect_to_tracks([ports_t[1 - con_par]], tr_id_sel[1 - con_par], min_len_mode=0)
+                    top_wire = self.connect_to_tracks([ports_t[1 - con_par]],
+                                                      tr_id_sel[1 - con_par], min_len_mode=0)
                     port_wires[2].append(top_wire)
                 if row_idx == (ny // 2) - 1:
                     port_wires[1].append(mid_wire)
@@ -308,7 +316,7 @@ class TerminationCore(ResArrayBase):
             return row_warrs
 
 
-class Termination(TemplateBase):
+class Termination(ResSubstrateWrapper):
     """An template for creating termination resistors.
 
     Parameters
@@ -317,9 +325,9 @@ class Termination(TemplateBase):
             the template database.
     lib_name : str
         the layout library name.
-    params : dict[str, any]
+    params : Dict[str, Any]
         the parameter values.
-    used_names : set[str]
+    used_names : Set[str]
         a set of already used cell names.
     **kwargs :
         dictionary of optional parameters.  See documentation of
@@ -328,12 +336,7 @@ class Termination(TemplateBase):
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
-        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
-        self._sch_params = None
-
-    @property
-    def sch_params(self):
-        return self._sch_params
+        ResSubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
@@ -371,62 +374,7 @@ class Termination(TemplateBase):
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
         show_pins = self.params['show_pins']
-
-        res_master = self.new_template(params=res_params, temp_cls=TerminationCore)
-        self._sch_params = res_master.sch_params.copy()
-
-        if sub_w == 0:
-            # do not draw substrate contact.
-            inst = self.add_instance(res_master, inst_name='XRES', loc=(0, 0), unit_mode=True)
-            for port_name in inst.port_names_iter():
-                self.reexport(inst.get_port(port_name), show=show_pins)
-            self.array_box = inst.array_box
-            self.set_size_from_bound_box(res_master.top_layer, res_master.bound_box)
-        else:
-            # draw contact and move array up
-            top_layer, nx_arr, ny_arr = res_master.size
-            w_pitch, h_pitch = self.grid.get_size_pitch(top_layer, unit_mode=True)
-            sub_params = dict(
-                top_layer=top_layer,
-                lch=sub_lch,
-                w=sub_w,
-                sub_type=sub_type,
-                threshold=self.params['threshold'],
-                well_width=res_master.get_well_width(),
-                show_pins=False,
-                is_passive=True,
-                tot_width_parity=nx_arr % 2,
-            )
-            sub_master = self.new_template(params=sub_params, temp_cls=SubstrateContact)
-            sub_box = sub_master.bound_box
-            ny_shift = -(-sub_box.height_unit // h_pitch)
-
-            # compute substrate X coordinate so substrate is on its own private horizontal pitch
-            sub_x_pitch, _ = sub_master.grid.get_size_pitch(sub_master.size[0], unit_mode=True)
-            sub_x = ((w_pitch * nx_arr - sub_box.width_unit) // 2 // sub_x_pitch) * sub_x_pitch
-
-            bot_inst = self.add_instance(sub_master, inst_name='XBSUB', loc=(sub_x, 0), unit_mode=True)
-            res_inst = self.add_instance(res_master, inst_name='XRES', loc=(0, ny_shift * h_pitch), unit_mode=True)
-            top_yo = (ny_arr + 2 * ny_shift) * h_pitch
-            top_inst = self.add_instance(sub_master, inst_name='XTSUB', loc=(sub_x, top_yo),
-                                         orient='MX', unit_mode=True)
-
-            # connect implant layers of resistor array and substrate contact together
-            for lay in self.grid.tech_info.get_well_layers(sub_type):
-                self.add_rect(lay, self.get_rect_bbox(lay))
-
-            # export supplies and recompute array_box/size
-            port_name = 'VDD' if sub_type == 'ntap' else 'VSS'
-            self.reexport(bot_inst.get_port(port_name), show=show_pins)
-            self.reexport(top_inst.get_port(port_name), show=show_pins)
-            self.size = top_layer, nx_arr, ny_arr + 2 * ny_shift
-            self.array_box = bot_inst.array_box.merge(top_inst.array_box)
-            self.add_cell_boundary(self.bound_box)
-
-            for port_name in res_inst.port_names_iter():
-                self.reexport(res_inst.get_port(port_name), show=show_pins)
-
-            self._sch_params['sub_name'] = port_name
+        self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w, sub_type, show_pins)
 
 
 class TerminationCMCore(ResArrayBase):
@@ -521,7 +469,8 @@ class TerminationCMCore(ResArrayBase):
         cm_warr = self.connect_to_tracks(dum_warrs + [incm], tid)
         self.add_pin('incm', cm_warr, show=show_pins)
         for warr, name, mode in ((inp, 'inp', 1), (inn, 'inn', -1)):
-            tidx = self.grid.coord_to_nearest_track(hm_layer, warr.middle, half_track=True, mode=mode)
+            tidx = self.grid.coord_to_nearest_track(hm_layer, warr.middle,
+                                                    half_track=True, mode=mode)
             tid = TrackID(hm_layer, tidx)
             self.add_pin(name, self.connect_to_tracks(warr, tid, min_len_mode=0), show=show_pins)
 
@@ -567,12 +516,15 @@ class TerminationCMCore(ResArrayBase):
                 row_idx = row_offset_bot - row_cnt
                 ports_t1 = self.get_res_ports(row_idx, col_idx)
                 ports_b1 = self.get_res_ports(row_idx - 1, col_idx)
-                self.connect_to_tracks([ports_b1[1 - con_par], ports_t1[1 - con_par]], tr_id_sel[con_par])
+                self.connect_to_tracks([ports_b1[1 - con_par], ports_t1[1 - con_par]],
+                                       tr_id_sel[con_par])
                 # save input wires
                 if row_cnt == 0:
                     if col_idx == ndum:
-                        inp = self.connect_to_tracks([ports_b0[1 - con_par]], tr_id_sel[1 - con_par], min_len_mode=1)
-                        inn = self.connect_to_tracks([ports_t1[con_par]], tr_id_sel[1 - con_par], min_len_mode=-1)
+                        inp = self.connect_to_tracks([ports_b0[1 - con_par]],
+                                                     tr_id_sel[1 - con_par], min_len_mode=1)
+                        inn = self.connect_to_tracks([ports_t1[con_par]],
+                                                     tr_id_sel[1 - con_par], min_len_mode=-1)
                     elif col_idx == ndum + nseg - 1:
                         incm = self.connect_to_tracks([ports_b0[1 - con_par], ports_t1[con_par]],
                                                       tr_id_sel[1 - con_par], min_len_mode=0)
