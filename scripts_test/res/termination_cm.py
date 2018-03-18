@@ -35,7 +35,7 @@ def generate(prj, specs):
 
 if __name__ == '__main__':
 
-    with open('specs_test/res_termination_cm.yaml', 'r') as f:
+    with open('specs_test/res/termination_cm.yaml', 'r') as f:
         block_specs = yaml.load(f)
 
     local_dict = locals()
