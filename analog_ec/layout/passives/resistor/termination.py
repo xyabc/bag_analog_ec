@@ -352,6 +352,7 @@ class Termination(ResSubstrateWrapper):
             port_layer='the port layer.',
             sub_w='substrate contact width. Set to 0 to disable drawing substrate contact.',
             sub_lch='substrate contact channel length.',
+            sub_tr_w='substrate track width in number of tracks.  None for default.',
             em_specs='EM specifications for the termination network.',
             show_pins='True to show pins.',
             res_options='Configuration dictionary for ResArrayBase.',
@@ -361,6 +362,7 @@ class Termination(ResSubstrateWrapper):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            sub_tr_w=None,
             em_specs=None,
             show_pins=True,
             res_options=None,
@@ -373,8 +375,10 @@ class Termination(ResSubstrateWrapper):
         sub_lch = res_params.pop('sub_lch')
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
+        sub_tr_w = self.params['sub_tr_w']
         show_pins = self.params['show_pins']
-        self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w, sub_type, show_pins)
+        self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w, sub_tr_w,
+                                sub_type, show_pins)
 
 
 class TerminationCMCore(ResArrayBase):

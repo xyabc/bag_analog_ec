@@ -48,6 +48,7 @@ class ResSubstrateWrapper(TemplateBase):
             'params': 'resistor layout parameters.',
             'sub_w': 'substrate contact width. Set to 0 to disable drawing substrate contact.',
             'sub_lch': 'substrate contact channel length.',
+            'sub_tr_w': 'substrate track width in number of tracks.  None for default.',
             'show_pins': 'True to show pins.',
         }
 
@@ -55,6 +56,7 @@ class ResSubstrateWrapper(TemplateBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            sub_tr_w=None,
             show_pins=True,
         )
 
@@ -65,6 +67,7 @@ class ResSubstrateWrapper(TemplateBase):
         cls = self.params['class']
         sub_lch = self.params['sub_lch']
         sub_w = self.params['sub_w']
+        sub_tr_w = self.params['sub_tr_w']
         show_pins = self.params['show_pins']
         params = self.params['params'].copy()
         sub_type = params['sub_type']
@@ -72,12 +75,13 @@ class ResSubstrateWrapper(TemplateBase):
         cls_mod = importlib.import_module(mod)
         temp_cls = getattr(cls_mod, cls)
 
-        self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_type, show_pins)
+        self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, show_pins)
 
-    def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_type, show_pins):
+    def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, show_pins):
 
         params['show_pins'] = False
         res_master = self.new_template(params=params, temp_cls=temp_cls)
+        self._sch_params = res_master.sch_params.copy()
 
         if sub_w == 0:
             # do not draw substrate contact.
@@ -96,6 +100,7 @@ class ResSubstrateWrapper(TemplateBase):
                 w=sub_w,
                 sub_type=sub_type,
                 threshold=self.params['threshold'],
+                port_width=sub_tr_w,
                 well_width=res_master.get_well_width(),
                 show_pins=False,
                 is_passive=True,
