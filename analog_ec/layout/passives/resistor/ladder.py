@@ -254,7 +254,7 @@ class ResLadderCore(ResArrayBase):
     def _draw_metal_tracks(self, nx, ny, ndum, hcon_space):
         show_pins = self.params['show_pins']
 
-        num_h_tracks, num_v_tracks, num_x_tracks = self.num_tracks[0:3]
+        num_h_tracks, num_v_tracks, num_x_tracks = self.num_tracks[:3]
         xm_bot_idx = (num_x_tracks - nx) / 2
 
         tp_idx = self.top_port_idx
