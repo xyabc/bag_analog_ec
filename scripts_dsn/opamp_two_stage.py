@@ -105,6 +105,25 @@ def design_close_loop(prj, funity_min_first=None, max_iter=100):
     return dsn_info
 
 
+def generate_and_sim(prj, generate=True):
+    ver_specs_fname = 'specs_verification/opamp_two_stage_1e8.yaml'
+    sim_specs_fname = 'specs_verification/opamp_two_stage_1e8_sim.yaml'
+
+    ver_specs = read_yaml(ver_specs_fname)
+    ver_specs['measurements'][0]['find_cfb'] = False
+
+    with open_file(sim_specs_fname, 'w') as f:
+        yaml.dump(ver_specs, f)
+
+    sim = DesignManager(prj, sim_specs_fname)
+    sim.characterize_designs(generate=generate, measure=True, load_from_file=False)
+    dsn_name = list(sim.get_dsn_name_iter())[0]
+    summary = sim.get_result(dsn_name)['opamp_ac']
+
+    print('result:')
+    pprint.pprint(summary)
+
+
 if __name__ == '__main__':
     local_dict = locals()
     if 'bprj' not in local_dict:
@@ -115,5 +134,6 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    design_close_loop(bprj, funity_min_first=None, max_iter=10)
+    # design_close_loop(bprj, funity_min_first=None, max_iter=10)
     # design_only()
+    generate_and_sim(bprj, generate=True)
