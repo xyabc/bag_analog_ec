@@ -276,7 +276,8 @@ class OpAmpTwoStage(AnalogBase):
                                       TrackID(hm_layer, out_tidx, width=w_out))
 
         # fill dummies
-        vss_warrs, vdd_warrs = self.fill_dummy()
+        sup_width = tr_manager.get_width(hm_layer, 'sup')
+        vss_warrs, vdd_warrs = self.fill_dummy(vdd_width=sup_width, vss_width=sup_width)
 
         # add pins
         self.add_pin('ref', [inc1, inc2], show=show_pins)

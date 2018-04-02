@@ -7,9 +7,10 @@ import yaml
 
 from bag.io import read_yaml, open_file
 from bag.core import BagProject
+from bag.simulation.core import DesignManager
 
 from verification_ec.mos.query import MOSDBDiscrete
-from ckt_dsn_ec.analog.amplifier.opamp_two_stage import OpAmpTwoStage, OpAmpTwoStageChar
+from ckt_dsn_ec.analog.amplifier.opamp_two_stage import OpAmpTwoStage
 
 
 def design(top_specs, nch_db, pch_db):
@@ -57,13 +58,13 @@ def design_close_loop(prj, max_iter=100):
     pch_db = MOSDBDiscrete(pch_conf_list, interp_method=interp_method)
 
     top_specs = read_yaml(amp_specs_fname)
-    f_unit_dsn_targ = f_unit_targ = top_specs['dsn_specs']['f_unit']
+    funity_dsn_targ = funity_targ = top_specs['dsn_specs']['f_unit']
 
-    cfb, corner_list, f_unit_list, pm_list = None, None, None, None
     sim, dsn_info = None, None
-    while f_unit_min_sim < f_unit_targ and iter_cnt < max_iter:
-        print('Iteration %d, f_unit_dsn_targ = %.4g' % (iter_cnt, f_unit_dsn_targ))
-        top_specs['dsn_specs']['f_unit'] = f_unit_dsn_targ
+    summary = None
+    while f_unit_min_sim < funity_targ and iter_cnt < max_iter:
+        print('Iteration %d, f_unit_dsn_targ = %.4g' % (iter_cnt, funity_dsn_targ))
+        top_specs['dsn_specs']['f_unit'] = funity_dsn_targ
         if dsn_info is not None:
             top_specs['dsn_specs']['i1_min_size'] = dsn_info['i1_size']
 
@@ -76,25 +77,25 @@ def design_close_loop(prj, max_iter=100):
         with open_file(ver_specs_fname, 'w') as f:
             yaml.dump(ver_specs, f)
 
-        sim = OpAmpTwoStageChar(prj, ver_specs_fname)
-        cfb, corner_list, f_unit_list, pm_list = sim.find_cfb(min_scale=0.6, max_scale=1.6)
+        sim = DesignManager(prj, ver_specs_fname)
+        sim.characterize_designs(generate=True, measure=True, load_from_file=False)
+        dsn_name = list(sim.get_dsn_name_iter())[0]
+        summary = sim.get_result(dsn_name)
 
-        f_unit_min_sim = min(f_unit_list)
-        k = f_unit_targ / f_unit_min_sim
+        funity_list = summary['funity']
+
+        print('Iteration %d, result:' % iter_cnt)
+        pprint.pprint(summary)
+
+        funity_min = min(funity_list)
+        k = funity_targ / funity_min
         k_real = max(k_min, min(k, k_max))
         print('k = %.4g, k_real = %.4g' % (k, k_real))
-        f_unit_dsn_targ = f_unit_min_dsn * k_real
+        funity_dsn_targ = f_unit_min_dsn * k_real
         iter_cnt += 1
 
-    print('close loop design done.')
-    print('running DC simulation')
-    sim.run_simulations(tb_type='tb_dc')
-    _, gain_list = sim.process_dc_data()
-    print('cfb = %.4g' % cfb)
-    print('corners = %s' % corner_list)
-    print('funit = %s' % f_unit_list)
-    print('phase margin = %s' % pm_list)
-    print('gain = %s' % gain_list)
+    print('close loop design done.  Final result:')
+    pprint.pprint(summary)
 
     return dsn_info
 
@@ -109,6 +110,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    # design_close_loop(bprj, max_iter=10)
-    design_only()
-    # plot_data(bprj)
+    design_close_loop(bprj, max_iter=10)
+    # design_only()
