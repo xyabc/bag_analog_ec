@@ -83,17 +83,17 @@ def design_close_loop(prj, funity_min_first=None, max_iter=100):
                 yaml.dump(ver_specs, f)
 
         sim = DesignManager(prj, ver_specs_fname)
-        sim.characterize_designs(generate=generate, measure=True, load_from_file=True)
+        sim.characterize_designs(generate=generate, measure=True, load_from_file=False)
         dsn_name = list(sim.get_dsn_name_iter())[0]
-        summary = sim.get_result(dsn_name)
+        summary = sim.get_result(dsn_name)['opamp_ac']
 
         funity_list = summary['funity']
 
         print('Iteration %d, result:' % iter_cnt)
         pprint.pprint(summary)
 
-        funity_min = min(funity_list)
-        k = funity_targ / funity_min
+        f_unit_min_sim = min(funity_list)
+        k = funity_targ / f_unit_min_sim
         k_real = max(k_min, min(k, k_max))
         print('k = %.4g, k_real = %.4g' % (k, k_real))
         funity_dsn_targ = f_unit_min_dsn * k_real
