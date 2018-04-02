@@ -42,7 +42,7 @@ def design_only():
     design(top_specs, nch_db, pch_db)
 
 
-def design_close_loop(prj, max_iter=100):
+def design_close_loop(prj, funity_min_first=None, max_iter=100):
     interp_method = 'spline'
     nch_conf_list = ['data/nch_w4_stack/specs.yaml', ]
     pch_conf_list = ['data/pch_w4_stack/specs.yaml', ]
@@ -68,17 +68,22 @@ def design_close_loop(prj, max_iter=100):
         if dsn_info is not None:
             top_specs['dsn_specs']['i1_min_size'] = dsn_info['i1_size']
 
-        dsn = design(top_specs, nch_db, pch_db)
-        dsn_info = dsn.get_dsn_info()
-        f_unit_min_dsn = min(dsn_info['f_unit'])
+        if funity_min_first is not None and iter_cnt == 0:
+            generate = False
+            f_unit_min_dsn = funity_min_first
+        else:
+            generate = True
+            dsn = design(top_specs, nch_db, pch_db)
+            dsn_info = dsn.get_dsn_info()
+            f_unit_min_dsn = min(dsn_info['f_unit'])
 
-        ver_specs = dsn.get_specs_verification(top_specs)
+            ver_specs = dsn.get_specs_verification(top_specs)
 
-        with open_file(ver_specs_fname, 'w') as f:
-            yaml.dump(ver_specs, f)
+            with open_file(ver_specs_fname, 'w') as f:
+                yaml.dump(ver_specs, f)
 
         sim = DesignManager(prj, ver_specs_fname)
-        sim.characterize_designs(generate=True, measure=True, load_from_file=False)
+        sim.characterize_designs(generate=generate, measure=True, load_from_file=True)
         dsn_name = list(sim.get_dsn_name_iter())[0]
         summary = sim.get_result(dsn_name)
 
@@ -110,5 +115,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    design_close_loop(bprj, max_iter=10)
+    design_close_loop(bprj, funity_min_first=None, max_iter=10)
     # design_only()
