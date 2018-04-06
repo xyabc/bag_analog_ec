@@ -1,0 +1,154 @@
+dut_lib: 'bag_analog_ec'
+dut_cell: 'opamp_two_stage'
+layout_package: 'analog_ec.layout.amplifiers.opamp'
+layout_class: 'OpAmpTwoStage'
+
+impl_lib: 'AAAFOO_TEST_OP_AMP'
+dsn_basename: 'OPAMP_TWO_STAGE'
+
+rcx_params: {}
+view_name: 'av_extracted'
+
+root_dir: 'data/opamp_two_stage'
+summary_fname: 'summary.yaml'
+
+routing_grid:
+  layers: [1, 2, 3, 4, 5]
+  widths: [0.1, 0.1, 0.1, 0.1, 0.1]
+  spaces: [0.1, 0.1, 0.1, 0.1, 0.1]
+  bot_dir: 'y'
+  width_override:
+    2: {2: 0.2}
+    3: {3: 0.2}
+    4: {2: 0.2}
+    5: {2: 0.2}
+
+sweep_params:
+  lch: [20.0e-9]
+
+layout_params:
+  lch: 20.0e-9
+  ptap_w: 0.5e-6
+  ntap_w: 0.5e-6
+  w_dict:
+    load: 0.5e-6
+    in: 0.5e-6
+    tail: 0.5e-6
+  th_dict:
+    load: 'standard'
+    in: 'standard'
+    tail: 'standard'
+  seg_dict:
+    tail1: 8
+    tail2: 16
+    tailcm: 16
+    in: 8
+    ref: 4
+    diode1: 2
+    ngm1: 4
+    diode2: 8
+    ngm2: 16
+  stack_dict:
+    tail: 1
+    in: 1
+    diode: 1
+    ngm: 1
+  ndum: 4
+  tr_widths:
+    bias: {4: 1}
+    in: {4: 1}
+    out: {4: 1}
+    tail: {4: 1}
+  tr_spaces:
+    bias: {4: 0}
+    in: {4: 1}
+    out: {4: 1}
+    tail: {4: 0}
+  show_pins: True
+  guard_ring_nf: 0
+  top_layer: 5
+  
+dsn_specs:
+  i1_unit: [2.0e-07, 2.0e-07, 2.0e-07]
+  i1_min_size: 12
+  vg_list: [0.45, 0.45, 0.45]
+  vout_list: [0.45, 0.45, 0.45]
+  cpar1: 5.0e-15
+  cload: 2.2e-13
+  f_unit: 100.0e+6
+  phase_margin: 45.0
+  res_var: 0.2
+  l: 9.0e-08
+  vstar_gm_min: 0.067
+  ft_load_scale: 3.0
+  vds_tail_min: 0.1
+  seg_gm_min: 4
+  vdd: 0.9
+  pmos_input: true
+  load_stack_list: [1, 2]
+
+dut_wrappers:
+  - name: 'opamp_dm'
+    lib: 'bag_analog_ec'
+    cell: 'opamp_two_stage_wrapper_dm'
+    params:
+      cfb: 'cfb'
+      cload: 'cload'
+      gain_cmfb: 'gain_cmfb'
+      rfb: 'rfb'
+      vdd: 'vdd'
+      
+env_list: ['tt', 'ff_hot', 'ss_cold']
+
+measurements:
+  - meas_type: 'opamp_ac'
+    meas_package: 'ckt_dsn_ec.analog.amplifier.opamp_two_stage'
+    meas_class: 'OpAmpTwoStageChar'
+    out_fname: 'op_amp.yaml'
+    rfb: 4784.9
+    cfb: 56.0e-15
+    res_var: 0.2
+    cmin_scale: 1.0
+    cmax_scale: 2.0
+    num_pts: 11
+    phase_margin: 45.0
+    testbenches:
+      ac:
+        tb_package: 'verification_ec.ac.core'
+        tb_class: 'ACTB'
+        tb_lib: 'bag_testbenches_ec'
+        tb_cell: 'amp_tb_ac'
+        sch_params:
+          dut_conns:
+            ibias: 'ibias'
+            inac: 'vin'
+            indc: 'incm'
+            midac: 'midac'
+            middc: 'middc'
+            outac: 'vout'
+            outdc: 'outdc'
+            voutcm: 'outcm'
+          ibias_dict:
+            BIAS: ['ibias', 'VSS', 'ibias']
+          vbias_dict:
+            INAC: ['vin', 'VSS', 0, {'acm': 1.0}]
+            INCM: ['incm', 'VSS', 'vincm']
+            OUTCM: ['outcm', 'VSS', 'voutcm']
+          no_cload: True
+        wrapper_type: 'opamp_dm'
+        fstart: 1.0e+4
+        fstop: 1.0e+10
+        fndec: 10
+        sim_vars:
+          vdd: 1.0
+          ibias: 2.0e-6
+          vinac: 1.0
+          vincm: 0.5
+          vindc: 0.0
+          voutcm: 0.5
+          rfb: 3130.7
+          cfb: 67.2e-15
+          cload: 220.0e-15
+          gain_cmfb: 200.0
+        sim_outputs:
+          'vout': "getData(\"/vout\", ?result 'ac)"
