@@ -5,66 +5,22 @@ import pprint
 import yaml
 
 from bag.core import BagProject
-from bag.layout import RoutingGrid, TemplateDB
 
 from analog_ec.layout.passives.resistor.termination import Termination
 
 
-def make_tdb(prj, target_lib, specs):
-    grid_specs = specs['routing_grid']
-    layers = grid_specs['layers']
-    widths = grid_specs['widths']
-    spaces = grid_specs['spaces']
-    bot_dir = grid_specs['bot_dir']
-    width_override = grid_specs.get('width_override', None)
-
-    routing_grid = RoutingGrid(prj.tech_info, layers, spaces, widths, bot_dir,
-                               width_override=width_override)
-    tdb = TemplateDB('template_libs.def', routing_grid, target_lib, use_cybagoa=True)
-    return tdb
-
-
-def generate(prj, specs, gen_sch=False, run_lvs=False):
-    impl_lib = specs['impl_lib']
-    impl_cell = specs['impl_cell']
-    sch_lib = specs['sch_lib']
-    sch_cell = specs['sch_cell']
-    params = specs['params']
-
-    temp_db = make_tdb(prj, impl_lib, specs)
-
-    print('creating layouts')
-    template = temp_db.new_template(params=params, temp_cls=Termination, debug=False)
-    temp_db.batch_layout(prj, [template], [impl_cell])
-    print('done')
-
-    if gen_sch:
-        print('creating schematics')
-
-        dsn = prj.create_design_module(sch_lib, sch_cell)
-        dsn.design(**template.sch_params)
-        dsn.implement_design(impl_lib, top_cell_name=impl_cell)
-        print('schematic done.')
-
-        if run_lvs:
-            print('running lvs')
-            lvs_passed, lvs_log = prj.run_lvs(impl_lib, impl_cell)
-            print('LVS log: %s' % lvs_log)
-            if lvs_passed:
-                print('LVS passed!')
-            else:
-                print('LVS failed...')
-
-
-def generate_em(prj, specs, gen_sch=False, run_lvs=False):
-    impl_lib = specs['impl_lib']
+def generate_em(prj, specs, gen_sch=False, run_lvs=False, use_cybagoa=False):
     params = specs['params'].copy()
     em_params = specs['em_params']
 
-    temp_db = make_tdb(prj, impl_lib, specs)
-    tech_info = temp_db.grid.tech_info
+    tech_info = prj.tech_info
 
-    res_type = params['res_type']
+    res_options = params['res_options']
+    if res_options is None:
+        res_type = 'standard'
+    else:
+        res_type = res_options.get('res_type', 'standard')
+
     res_targ = em_params['res_targ']
     num_even = em_params['num_even']
     em_specs = em_params['em_specs']
@@ -78,7 +34,8 @@ def generate_em(prj, specs, gen_sch=False, run_lvs=False):
     pprint.pprint(params)
 
     specs['params'] = params
-    generate(prj, specs, gen_sch=gen_sch, run_lvs=run_lvs)
+
+    prj.generate_cell(specs, Termination, gen_sch=gen_sch, run_lvs=run_lvs, use_cybagoa=use_cybagoa)
 
 
 if __name__ == '__main__':
@@ -95,5 +52,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    generate(bprj, block_specs, gen_sch=False, run_lvs=False)
-    # generate_em(bprj, block_specs, gen_sch=False, run_lvs=False)
+    # bprj.generate_cell(block_specs, Termination, gen_sch=True, run_lvs=True, use_cybagoa=True)
+    generate_em(bprj, block_specs, gen_sch=True, run_lvs=True, use_cybagoa=True)

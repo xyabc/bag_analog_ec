@@ -127,9 +127,9 @@ class ResSubstrateWrapper(TemplateBase):
                 self.add_rect(lay, self.get_rect_bbox(lay))
 
             # export supplies and recompute array_box/size
-            port_name = 'VDD' if sub_type == 'ntap' else 'VSS'
-            self.reexport(bot_inst.get_port(port_name), show=show_pins)
-            self.reexport(top_inst.get_port(port_name), show=show_pins)
+            sub_port_name = 'VDD' if sub_type == 'ntap' else 'VSS'
+            self.reexport(bot_inst.get_port(sub_port_name), show=show_pins)
+            self.reexport(top_inst.get_port(sub_port_name), show=show_pins)
             self.size = top_layer, nx_arr, ny_arr + 2 * ny_shift
             self.array_box = bot_inst.array_box.merge(top_inst.array_box)
             self.add_cell_boundary(self.bound_box)
@@ -137,4 +137,4 @@ class ResSubstrateWrapper(TemplateBase):
             for port_name in res_inst.port_names_iter():
                 self.reexport(res_inst.get_port(port_name), show=show_pins)
 
-            self._sch_params['sub_name'] = port_name
+            self._sch_params['sub_name'] = sub_port_name
