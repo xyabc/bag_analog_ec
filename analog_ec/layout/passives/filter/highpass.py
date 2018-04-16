@@ -100,3 +100,12 @@ class ResHighPassDiff(ResArrayBase):
         self.draw_array(l_unit * lay_unit * res, w, sub_type, threshold, nx=nx, ny=1,
                         top_layer=top_layer, res_type=res_type, ext_dir='y', options=res_options,
                         connect_up=True, half_blk_x=True, half_blk_y=True, min_height=h_unit)
+
+
+
+
+        self._sch_params = dict(
+            l=l_unit * lay_unit * res,
+            w=w,
+            res_type=res_type,
+        )
