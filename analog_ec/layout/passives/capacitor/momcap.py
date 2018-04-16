@@ -52,7 +52,7 @@ class MOMCapCore(TemplateBase):
             cap_height='MOM cap height, in layout units.',
             cap_margin='margin between cap and boundary, in layout units.',
             port_width='port track width, in number of tracks.',
-            port_idx='port track index.  Can be int, two-int tuple, or None.  If None, defaults to center.',
+            port_idx='port track index.  Can be int, two-int tuple, or None.  Defaults to center.',
             show_pins='True to show pin labels.',
             cap_options='MOM cap layout options.',
             sub_name='Substrate name.  Empty string to disable.',
@@ -98,7 +98,8 @@ class MOMCapCore(TemplateBase):
 
         # get port locations
         min_len = self.grid.get_min_length(port_layer, port_width, unit_mode=True)
-        via_ext = self.grid.get_via_extensions(cap_top_layer, cap_port_width, port_width, unit_mode=True)[1]
+        via_ext = self.grid.get_via_extensions(cap_top_layer, cap_port_width, port_width,
+                                               unit_mode=True)[1]
         res_len = top_w
         port_len = max(top_w, min_len - 2 * via_ext - bot_w - res_len)
 
@@ -149,8 +150,10 @@ class MOMCapCore(TemplateBase):
         warr1 = self.connect_to_tracks(warr1, tid1)
         res_len *= res
         port_len *= res
-        self.add_res_metal_warr(port_layer, tid0.base_index, warr0.lower - res_len, warr0.lower, width=port_width)
-        self.add_res_metal_warr(port_layer, tid1.base_index, warr1.upper, warr1.upper + res_len, width=port_width)
+        self.add_res_metal_warr(port_layer, tid0.base_index, warr0.lower - res_len, warr0.lower,
+                                width=port_width)
+        self.add_res_metal_warr(port_layer, tid1.base_index, warr1.upper, warr1.upper + res_len,
+                                width=port_width)
         warr0 = self.add_wires(port_layer, tid0.base_index, warr0.lower - res_len - port_len,
                                warr0.lower - res_len, width=port_width)
         warr1 = self.add_wires(port_layer, tid1.base_index, warr1.upper + res_len,
