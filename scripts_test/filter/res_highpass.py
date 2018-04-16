@@ -4,7 +4,7 @@ import yaml
 
 from bag.core import BagProject
 
-from analog_ec.layout.passives.filter.highpass import ResHighPassDiff
+from analog_ec.layout.passives.filter.highpass import HighPassDiffCore
 
 
 if __name__ == '__main__':
@@ -20,5 +20,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    bprj.generate_cell(block_specs, ResHighPassDiff, gen_sch=False, run_lvs=False, use_cybagoa=True)
+    bprj.generate_cell(block_specs, HighPassDiffCore, gen_sch=False, run_lvs=False, use_cybagoa=True)
     # bprj.generate_cell(block_specs, ResHighPassDiff, gen_sch=True, run_lvs=True, use_cybagoa=True)

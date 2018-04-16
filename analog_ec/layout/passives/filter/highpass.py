@@ -6,12 +6,13 @@
 from typing import Dict, Set, Any
 
 from bag.util.search import BinaryIterator
+from bag.layout.util import BBox
 from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase, ResArrayBaseInfo
 
 
-class ResHighPassDiff(ResArrayBase):
+class HighPassDiffCore(ResArrayBase):
     """bias resistor for differential high pass filter.
 
     Parameters
@@ -51,6 +52,8 @@ class ResHighPassDiff(ResArrayBase):
             ndum='number of dummy resistors.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
+            cap_sep='Capacitor separation, in resolution units.',
+            cap_margin='Capacitor space from edge, in resolution units.',
             show_pins='True to show pins.',
         )
 
@@ -60,6 +63,8 @@ class ResHighPassDiff(ResArrayBase):
         return dict(
             res_type='standard',
             res_options=None,
+            cap_sep=0,
+            cap_margin=0,
             show_pins=True,
         )
 
@@ -74,12 +79,15 @@ class ResHighPassDiff(ResArrayBase):
         ndum = self.params['ndum']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
+        cap_sep = self.params['cap_sep']
+        cap_margin = self.params['cap_margin']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
         lay_unit = self.grid.layout_unit
         w_unit = int(round(w / lay_unit / res))
 
+        # find resistor length
         info = ResArrayBaseInfo(self.grid, sub_type, threshold, top_layer=top_layer,
                                 res_type=res_type, ext_dir='y', options=res_options,
                                 connect_up=True, half_blk_x=True, half_blk_y=True)
@@ -95,14 +103,38 @@ class ResHighPassDiff(ResArrayBase):
             else:
                 bin_iter.down()
 
+        # draw resistor
         l_unit = bin_iter.get_last_save()
         nx = 2 * (nser + ndum)
         self.draw_array(l_unit * lay_unit * res, w, sub_type, threshold, nx=nx, ny=1,
                         top_layer=top_layer, res_type=res_type, ext_dir='y', options=res_options,
                         connect_up=True, half_blk_x=True, half_blk_y=True, min_height=h_unit)
 
+        # get port location
+        bot_pin, top_pin = self.get_res_ports(0, 0)
+        bot_box = bot_pin.get_bbox_array(self.grid).base
+        top_box = top_pin.get_bbox_array(self.grid).base
 
+        # draw MOM cap
+        xc = self.bound_box.xc_unit
+        num_layer = 2
+        bot_layer = self.bot_layer_id
+        top_layer = bot_layer + num_layer - 1
+        spx_le = self.grid.get_line_end_space(bot_layer, 1, unit_mode=True)
+        spx_le2 = -(-spx_le // 2)
+        cap_sep = max(cap_sep, spx_le2)
+        cap_margin = max(cap_margin, spx_le)
+        boxl = BBox(cap_margin, bot_box.top_unit, xc - cap_sep, top_box.bottom_unit,
+                    res, unit_mode=True)
+        portsl = self.add_mom_cap(boxl, bot_layer, num_layer, port_parity=(0, 1))
+        boxr = BBox(xc + cap_sep, bot_box.top_unit, self.bound_box.right_unit - cap_margin,
+                    top_box.bottom_unit, res, unit_mode=True)
+        portsr = self.add_mom_cap(boxr, bot_layer, num_layer, port_parity=(1, 0))
 
+        self.add_pin('caplp', portsl[top_layer][0], show=show_pins)
+        self.add_pin('capln', portsl[top_layer][1], show=show_pins)
+        self.add_pin('caprp', portsr[top_layer][0], show=show_pins)
+        self.add_pin('caprn', portsr[top_layer][1], show=show_pins)
 
         self._sch_params = dict(
             l=l_unit * lay_unit * res,
