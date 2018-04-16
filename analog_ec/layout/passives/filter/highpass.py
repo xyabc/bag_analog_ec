@@ -49,18 +49,18 @@ class ResHighPassDiff(ResArrayBase):
             top_layer='The top layer ID',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
-            show_pins='True to show pins.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
+            show_pins='True to show pins.',
         )
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            show_pins=True,
             res_type='standard',
             res_options=None,
+            show_pins=True,
         )
 
     def draw_layout(self):
@@ -72,9 +72,9 @@ class ResHighPassDiff(ResArrayBase):
         top_layer = self.params['top_layer']
         nser = self.params['nser']
         ndum = self.params['ndum']
-        show_pins = self.params['show_pins']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
+        show_pins = self.params['show_pins']
 
         res = self.grid.resolution
         lay_unit = self.grid.layout_unit
