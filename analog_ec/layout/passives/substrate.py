@@ -7,6 +7,7 @@ import importlib
 from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
+from abs_templates_ec.analog_core.base import AnalogBase
 from abs_templates_ec.analog_core.substrate import SubstrateContact
 
 if TYPE_CHECKING:
@@ -106,7 +107,7 @@ class SubstrateWrapper(TemplateBase):
                                 show_pins, end_mode=end_mode, is_passive=True)
 
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
-                           show_pins, end_mode=15, is_passive=True):
+                           show_pins, end_mode=15, is_passive=True, sub_tids=None):
         params['show_pins'] = False
 
         if sub_w == 0:
@@ -143,6 +144,22 @@ class SubstrateWrapper(TemplateBase):
             else:
                 well_width = master_box.width
             bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
+            if sub_tids is not None:
+                bot_tid, top_tid = sub_tids
+                subb_h = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                                                   threshold, end_mode=bot_end_mode,
+                                                   is_passive=is_passive)
+                subt_h = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                                                   threshold, end_mode=top_end_mode,
+                                                   is_passive=is_passive)
+                ytop = subb_h + subt_h + master.bound_box.height_unit
+
+                hm_layer = AnalogBase.get_mos_conn_layer(self.grid.tech_info) + 1
+                tr_off = self.grid.find_next_track(hm_layer, ytop, half_track=True, mode=-1,
+                                                   unit_mode=True)
+                top_tid = (tr_off - top_tid[0], top_tid[1])
+            else:
+                bot_tid = top_tid = None
             sub_params = dict(
                 top_layer=top_layer,
                 lch=sub_lch,
@@ -154,10 +171,11 @@ class SubstrateWrapper(TemplateBase):
                 end_mode=bot_end_mode,
                 is_passive=is_passive,
                 max_nxblk=master_box.width_unit // blkw,
+                port_tid=bot_tid,
                 show_pins=False,
             )
             bsub_master = self.new_template(params=sub_params, temp_cls=SubstrateContact)
-            tsub_master = bsub_master.new_template_with(end_mode=top_end_mode)
+            tsub_master = bsub_master.new_template_with(end_mode=top_end_mode, port_tid=top_tid)
             bsub_box = bsub_master.bound_box
             sub_x = (master_box.width_unit - bsub_box.width_unit) // 2
 

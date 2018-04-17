@@ -269,6 +269,7 @@ class HighPassDiff(SubstrateWrapper):
             cap_spy='Capacitor vertical space from resistor ports, in resolution units.',
             cap_margin='Capacitor space from edge, in resolution units.',
             sub_tr_w='substrate track width in number of tracks.  None for default.',
+            sub_tids='Substrate contact tr_idx/tr_width tuples.',
             end_mode='substrate end mode flag.',
             show_pins='True to show pins.',
         )
@@ -283,6 +284,7 @@ class HighPassDiff(SubstrateWrapper):
             cap_spy=0,
             cap_margin=0,
             sub_tr_w=None,
+            sub_tids=None,
             end_mode=15,
             show_pins=True,
         )
@@ -295,6 +297,7 @@ class HighPassDiff(SubstrateWrapper):
         threshold = self.params['threshold']
         top_layer = self.params['top_layer']
         sub_tr_w = self.params['sub_tr_w']
+        sub_tids = self.params['sub_tids']
         end_mode = self.params['end_mode']
         show_pins = self.params['show_pins']
 
@@ -308,4 +311,5 @@ class HighPassDiff(SubstrateWrapper):
         params = self.params.copy()
         params['h_unit'] = h_unit - h_subb - h_subt
         self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
-                                threshold, show_pins, end_mode=end_mode, is_passive=True)
+                                threshold, show_pins, end_mode=end_mode, is_passive=True,
+                                sub_tids=sub_tids, )
