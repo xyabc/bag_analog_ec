@@ -241,9 +241,5 @@ class MOMCapChar(SubstrateWrapper):
         show_pins = self.params['show_pins']
 
         cap_params = self.params.copy()
-        sch_params, sub_name = self.draw_layout_helper(MOMCapCore, cap_params, sub_lch, sub_w,
-                                                       sub_tr_w, sub_type, threshold, show_pins,
-                                                       is_passive=False)
-
-        self._sch_params = sch_params.copy()
-        self._sch_params['sub_name'] = sub_name
+        self.draw_layout_helper(MOMCapCore, cap_params, sub_lch, sub_w, sub_tr_w, sub_type,
+                                threshold, show_pins, is_passive=False)

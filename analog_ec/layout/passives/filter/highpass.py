@@ -307,9 +307,5 @@ class HighPassDiff(SubstrateWrapper):
 
         params = self.params.copy()
         params['h_unit'] = h_unit - h_subb - h_subt
-        sch_params, sub_name = self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w,
-                                                       sub_tr_w, sub_type, threshold, show_pins,
-                                                       end_mode=end_mode, is_passive=True)
-
-        self._sch_params = sch_params.copy()
-        self._sch_params['sub_name'] = sub_name
+        self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
+                                threshold, show_pins, end_mode=end_mode, is_passive=True)

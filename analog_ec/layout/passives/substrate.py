@@ -36,10 +36,17 @@ class SubstrateWrapper(TemplateBase):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
+        self._fg_sub = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
+
+    @property
+    def fg_sub(self):
+        # type: () -> int
+        return self._fg_sub
 
     @classmethod
     def get_substrate_height(cls, grid, top_layer, lch, w, sub_type, threshold,
@@ -95,12 +102,8 @@ class SubstrateWrapper(TemplateBase):
         cls_mod = importlib.import_module(mod)
         temp_cls = getattr(cls_mod, cls)
 
-        sch_params, sub_name = self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_tr_w,
-                                                       sub_type, threshold, show_pins,
-                                                       end_mode=end_mode, is_passive=True)
-
-        self._sch_params = sch_params.copy()
-        self._sch_params['sub_name'] = sub_name
+        self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
+                                show_pins, end_mode=end_mode, is_passive=True)
 
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
                            show_pins, end_mode=15, is_passive=True):
@@ -118,6 +121,7 @@ class SubstrateWrapper(TemplateBase):
             self.array_box = inst.array_box
             self.set_size_from_bound_box(top_layer, master_box)
 
+            fg_sub = 0
             sub_port_name = ''
         else:
             # to center substrate with respect to master, master must have a middle X coordinate
@@ -186,4 +190,8 @@ class SubstrateWrapper(TemplateBase):
             for port_name in inst.port_names_iter():
                 self.reexport(inst.get_port(port_name), show=show_pins)
 
-        return master.sch_params, sub_port_name
+            fg_sub = bsub_master.fg_tot
+
+        self._sch_params = master.sch_params.copy()
+        self._sch_params['sub_name'] = sub_port_name
+        self._fg_sub = fg_sub
