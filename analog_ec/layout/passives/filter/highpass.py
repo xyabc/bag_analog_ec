@@ -123,7 +123,7 @@ class HighPassDiffCore(ResArrayBase):
                         options=res_options, connect_up=True, half_blk_x=half_blk_x,
                         half_blk_y=True, min_height=h_unit)
         # connect resistors
-        vdd, biasp, biasn, outp, outn = self.connect_resistors(ndum, nser)
+        vdd, biasp, biasn, outp_h, outn_h = self.connect_resistors(ndum, nser)
         # draw MOM cap
         xl = self.grid.get_wire_bounds(biasp.layer_id, biasp.track_id.base_index,
                                        width=biasp.track_id.width, unit_mode=True)[1]
@@ -131,15 +131,28 @@ class HighPassDiffCore(ResArrayBase):
                                        width=biasn.track_id.width, unit_mode=True)[0]
         caplp, capln, caprp, caprn = self.draw_mom_cap(nser, xl, xr, cap_spx, cap_spy, cap_margin)
 
-        # connect resistors to MOM cap
-        outp = self.connect_to_track_wires(outp, capln)
-        outn = self.connect_to_track_wires(outn, caprn)
+        # connect resistors to MOM cap, and draw metal resistors
+        vm_layer = self.bot_layer_id + 1
+        outp_v = self.connect_to_tracks(outp_h, capln.track_id)
+        outn_v = self.connect_to_tracks(outn_h, caprn.track_id)
+        tr_w = capln.track_id.width
+        wire_w = self.grid.get_track_width(vm_layer, tr_w, unit_mode=True)
+        if outp_v.middle_unit < capln.middle_unit:
+            yb, yt = outp_v.upper_unit, capln.lower_unit
+        else:
+            yb, yt = outp_v.lower_unit, capln.upper_unit
+        yt = max(yt, yb + wire_w)
+        res_l = yt - yb
+        self.add_res_metal_warr(vm_layer, outp_v.track_id.base_index, yb, yt,
+                                width=tr_w, unit_mode=True)
+        self.add_res_metal_warr(vm_layer, outn_v.track_id.base_index, yb, yt,
+                                width=tr_w, unit_mode=True)
 
         # add pins
         self.add_pin('biasp', biasp, show=show_pins)
         self.add_pin('biasn', biasn, show=show_pins)
-        self.add_pin('outp', outp, show=show_pins)
-        self.add_pin('outn', outn, show=show_pins)
+        self.add_pin('outp', outp_v, show=show_pins)
+        self.add_pin('outn', outn_v, show=show_pins)
         self.add_pin('inp', caplp, show=show_pins)
         self.add_pin('inn', caprp, show=show_pins)
         self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
@@ -150,6 +163,7 @@ class HighPassDiffCore(ResArrayBase):
             res_type=res_type,
             nser=nser,
             ndum=ndum,
+            res_vm_dim=(wire_w * res * lay_unit, res_l * res * lay_unit),
         )
 
     def connect_resistors(self, ndum, nser):
@@ -225,7 +239,7 @@ class HighPassDiffCore(ResArrayBase):
 
         caplp, capln = portsl[top_layer]
         caprp, caprn = portsr[top_layer]
-        return caplp, capln, caprp, caprn
+        return caplp[0], capln[0], caprp[0], caprn[0]
 
 
 class HighPassDiff(SubstrateWrapper):
