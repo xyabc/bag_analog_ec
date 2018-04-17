@@ -9,7 +9,7 @@ from bag.layout.util import BBox
 from bag.layout.routing import TrackID
 from bag.layout.template import TemplateBase
 
-from abs_templates_ec.analog_core.substrate import SubstrateContact
+from ..substrate import SubstrateWrapper
 
 if TYPE_CHECKING:
     from bag.layout.template import TemplateDB
@@ -177,7 +177,7 @@ class MOMCapCore(TemplateBase):
         )
 
 
-class MOMCapChar(TemplateBase):
+class MOMCapChar(SubstrateWrapper):
     """A class that appended substrate contacts on top and bottom of a ResArrayBase.
 
     Parameters
@@ -197,12 +197,7 @@ class MOMCapChar(TemplateBase):
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
-        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
-        self._sch_params = None
-
-    @property
-    def sch_params(self):
-        return self._sch_params
+        SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
@@ -247,69 +242,9 @@ class MOMCapChar(TemplateBase):
         show_pins = self.params['show_pins']
 
         cap_params = self.params.copy()
-        cap_params['show_pins'] = False
-        cap_params['half_blk_x'] = False
-        cap_params['half_blk_y'] = True
-        master = self.new_template(params=cap_params, temp_cls=MOMCapCore)
-        self._sch_params = master.sch_params.copy()
-        top_layer = master.top_layer
-        cap_box = master.bound_box
+        sch_params, sub_name = self.draw_layout_helper(MOMCapCore, cap_params, sub_lch, sub_w,
+                                                       sub_tr_w, sub_type, threshold, show_pins,
+                                                       is_passive=False)
 
-        if sub_w == 0:
-            # do not draw substrate contact.
-            inst = self.add_instance(master, inst_name='XCAP', loc=(0, 0), unit_mode=True)
-            for port_name in inst.port_names_iter():
-                self.reexport(inst.get_port(port_name), show=show_pins)
-            self.array_box = inst.array_box
-            self.set_size_from_bound_box(top_layer, cap_box)
-        else:
-            res = self.grid.resolution
-            blkw, blkh = self.grid.get_block_size(top_layer, unit_mode=True)
-
-            # draw contact and move array up
-            sub_params = dict(
-                top_layer=top_layer,
-                lch=sub_lch,
-                w=sub_w,
-                sub_type=sub_type,
-                threshold=threshold,
-                port_width=sub_tr_w,
-                well_width=cap_box.width,
-                max_nxblk=cap_box.width_unit // blkw,
-                show_pins=False,
-                is_passive=False,
-            )
-            sub_master = self.new_template(params=sub_params, temp_cls=SubstrateContact)
-            sub_box = sub_master.bound_box
-            sub_x = (cap_box.width_unit - sub_box.width_unit) // 2
-
-            # compute substrate X coordinate so substrate is on its own private horizontal pitch
-            bot_inst = self.add_instance(sub_master, inst_name='XBSUB', loc=(sub_x, 0),
-                                         unit_mode=True)
-            res_inst = self.add_instance(master, inst_name='XCAP',
-                                         loc=(0, sub_box.height_unit), unit_mode=True)
-            top_yo = sub_box.height_unit * 2 + cap_box.height_unit
-            top_inst = self.add_instance(sub_master, inst_name='XTSUB', loc=(sub_x, top_yo),
-                                         orient='MX', unit_mode=True)
-
-            # connect implant layers of resistor array and substrate contact together
-            for lay in self.grid.tech_info.get_well_layers(sub_type):
-                self.add_rect(lay, self.get_rect_bbox(lay))
-
-            # export supplies and recompute array_box/size
-            sub_port_name = 'VDD' if sub_type == 'ntap' else 'VSS'
-            self.reexport(bot_inst.get_port(sub_port_name), label=sub_port_name + ':',
-                          show=show_pins)
-            self.reexport(top_inst.get_port(sub_port_name), label=sub_port_name + ':',
-                          show=show_pins)
-            arr_box = BBox(0, bot_inst.array_box.bottom_unit, res_inst.bound_box.right_unit,
-                           top_inst.array_box.top_unit, res, unit_mode=True)
-            bnd_box = arr_box.extend(y=0, unit_mode=True).extend(y=top_yo, unit_mode=True)
-            self.array_box = arr_box
-            self.set_size_from_bound_box(top_layer, bnd_box)
-            self.add_cell_boundary(bnd_box)
-
-            for port_name in res_inst.port_names_iter():
-                self.reexport(res_inst.get_port(port_name), show=show_pins)
-
-            self._sch_params['sub_name'] = sub_port_name
+        self._sch_params = sch_params.copy()
+        self._sch_params['sub_name'] = sub_name

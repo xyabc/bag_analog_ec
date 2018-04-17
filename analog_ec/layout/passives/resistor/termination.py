@@ -13,7 +13,7 @@ from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase
 
-from .base import ResSubstrateWrapper
+from analog_ec.layout.passives.substrate import SubstrateWrapper
 
 if TYPE_CHECKING:
     from bag.layout.routing import WireArray
@@ -316,7 +316,7 @@ class TerminationCore(ResArrayBase):
             return row_warrs
 
 
-class Termination(ResSubstrateWrapper):
+class Termination(SubstrateWrapper):
     """An template for creating termination resistors.
 
     Parameters
@@ -336,7 +336,7 @@ class Termination(ResSubstrateWrapper):
 
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
-        ResSubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
 
     @classmethod
     def get_params_info(cls):
@@ -375,10 +375,15 @@ class Termination(ResSubstrateWrapper):
         sub_lch = res_params.pop('sub_lch')
         sub_w = res_params.pop('sub_w')
         sub_type = self.params['sub_type']
+        threshold = self.params['threshold']
         sub_tr_w = self.params['sub_tr_w']
         show_pins = self.params['show_pins']
-        self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w, sub_tr_w,
-                                sub_type, show_pins)
+        sch_params, sub_name = self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w,
+                                                       sub_tr_w, sub_type, threshold, show_pins,
+                                                       is_passive=True)
+
+        self._sch_params = sch_params.copy()
+        self._sch_params['sub_name'] = sub_name
 
 
 class TerminationCMCore(ResArrayBase):

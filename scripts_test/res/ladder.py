@@ -5,7 +5,7 @@ import yaml
 from bag.core import BagProject
 from bag.layout import RoutingGrid, TemplateDB
 
-from analog_ec.layout.passives.resistor.base import ResSubstrateWrapper
+from analog_ec.layout.passives.substrate import SubstrateWrapper
 
 
 def make_tdb(prj, target_lib, specs):
@@ -37,7 +37,7 @@ def generate(prj, specs, gen_sch=False, run_lvs=False):
     sub_params['params'] = params
 
     print('creating layouts')
-    template = temp_db.new_template(params=sub_params, temp_cls=ResSubstrateWrapper, debug=False)
+    template = temp_db.new_template(params=sub_params, temp_cls=SubstrateWrapper, debug=False)
     temp_db.batch_layout(prj, [template], [impl_cell])
     print('done')
 
