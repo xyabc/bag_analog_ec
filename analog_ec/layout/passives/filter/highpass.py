@@ -56,6 +56,8 @@ class HighPassDiffCore(ResArrayBase):
             top_layer='The top layer ID',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            in_tr_info='Input track info.',
+            out_tr_info='Output track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
@@ -87,6 +89,8 @@ class HighPassDiffCore(ResArrayBase):
         top_layer = self.params['top_layer']
         nser = self.params['nser']
         ndum = self.params['ndum']
+        in_tr_info = self.params['in_tr_info']
+        out_tr_info = self.params['out_tr_info']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
         cap_spx = self.params['cap_spx']
@@ -136,25 +140,52 @@ class HighPassDiffCore(ResArrayBase):
         outp_v = self.connect_to_tracks(outp_h, capln.track_id)
         outn_v = self.connect_to_tracks(outn_h, caprn.track_id)
         tr_w = capln.track_id.width
-        wire_w = self.grid.get_track_width(vm_layer, tr_w, unit_mode=True)
+        res_vm_w = self.grid.get_track_width(vm_layer, tr_w, unit_mode=True)
         if outp_v.middle_unit < capln.middle_unit:
             yb, yt = outp_v.upper_unit, capln.lower_unit
         else:
             yb, yt = outp_v.lower_unit, capln.upper_unit
-        yt = max(yt, yb + wire_w)
-        res_l = yt - yb
+        yt = max(yt, yb + res_vm_w)
+        res_vm_l = yt - yb
         self.add_res_metal_warr(vm_layer, outp_v.track_id.base_index, yb, yt,
                                 width=tr_w, unit_mode=True)
         self.add_res_metal_warr(vm_layer, outn_v.track_id.base_index, yb, yt,
                                 width=tr_w, unit_mode=True)
 
+        # connect outputs to horizontal tracks
+        hm_layer = vm_layer + 1
+        pidx, nidx, tr_w = in_tr_info
+        res_in_w = self.grid.get_track_width(hm_layer, tr_w, unit_mode=True)
+        inp, inn = self.connect_differential_tracks(caplp, caprp, hm_layer, pidx, nidx, width=tr_w)
+        tr_lower, tr_upper = inp.lower_unit, inp.upper_unit
+        self.add_res_metal_warr(hm_layer, pidx, tr_lower - res_in_w, tr_lower, width=tr_w,
+                                unit_mode=True)
+        self.add_res_metal_warr(hm_layer, nidx, tr_lower - res_in_w, tr_lower, width=tr_w,
+                                unit_mode=True)
+        inp = self.add_wires(hm_layer, pidx, tr_lower - 2 * res_in_w, tr_lower - res_in_w,
+                             width=tr_w, unit_mode=True)
+        inn = self.add_wires(hm_layer, nidx, tr_lower - 2 * res_in_w, tr_lower - res_in_w,
+                             width=tr_w, unit_mode=True)
+        pidx, nidx, tr_w = out_tr_info
+        res_out_w = self.grid.get_track_width(hm_layer, tr_w, unit_mode=True)
+        self.connect_differential_tracks(capln, caprn, hm_layer, pidx, nidx, track_lower=tr_lower,
+                                         track_upper=tr_upper, width=tr_w, unit_mode=True)
+        self.add_res_metal_warr(hm_layer, pidx, tr_upper, tr_upper + res_out_w, width=tr_w,
+                                unit_mode=True)
+        self.add_res_metal_warr(hm_layer, nidx, tr_upper, tr_upper + res_out_w, width=tr_w,
+                                unit_mode=True)
+        outp = self.add_wires(hm_layer, pidx, tr_upper + res_out_w, tr_upper + 2 * res_out_w,
+                              width=tr_w, unit_mode=True)
+        outn = self.add_wires(hm_layer, nidx, tr_upper + res_out_w, tr_upper + 2 * res_out_w,
+                              width=tr_w, unit_mode=True)
+
         # add pins
         self.add_pin('biasp', biasp, show=show_pins)
         self.add_pin('biasn', biasn, show=show_pins)
-        self.add_pin('outp', outp_v, show=show_pins)
-        self.add_pin('outn', outn_v, show=show_pins)
-        self.add_pin('inp', caplp, show=show_pins)
-        self.add_pin('inn', caprp, show=show_pins)
+        self.add_pin('outp', outp, show=show_pins)
+        self.add_pin('outn', outn, show=show_pins)
+        self.add_pin('inp', inp, show=show_pins)
+        self.add_pin('inn', inn, show=show_pins)
         self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
 
         self._sch_params = dict(
@@ -163,7 +194,9 @@ class HighPassDiffCore(ResArrayBase):
             res_type=res_type,
             nser=nser,
             ndum=ndum,
-            res_vm_dim=(wire_w * res * lay_unit, res_l * res * lay_unit),
+            res_vm_dim=(res_vm_w * res * lay_unit, res_vm_l * res * lay_unit),
+            res_in_dim=(res_in_w * res * lay_unit, res_in_w * res * lay_unit),
+            res_out_dim=(res_out_w * res * lay_unit, res_out_w * res * lay_unit),
         )
 
     def connect_resistors(self, ndum, nser):
@@ -277,6 +310,8 @@ class HighPassDiff(SubstrateWrapper):
             top_layer='The top layer ID',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            in_tr_info='Input track info.',
+            out_tr_info='Output track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
