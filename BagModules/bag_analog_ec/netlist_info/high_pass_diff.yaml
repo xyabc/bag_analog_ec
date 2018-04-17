@@ -1,0 +1,172 @@
+lib_name: bag_analog_ec
+cell_name: high_pass_diff
+pins: [ "inp", "inn", "outp", "VSS", "outn", "biasp", "biasn", "VDD" ]
+instances:
+  RDUMN:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "biasn"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "biasn"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  RDUMP:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "biasp"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "biasp"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  RN:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "rn"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "biasn"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  RP:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "rp"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "biasp"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  PIN8:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN7:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN6:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN5:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN4:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  RMIN:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "yn"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "inn"
+        num_bits: 1
+  RMON:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outn"
+        num_bits: 1
+  RMVN:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "rn"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "xn"
+        num_bits: 1
+  RMIP:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "yp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "inp"
+        num_bits: 1
+  RMOP:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "outp"
+        num_bits: 1
+  RMVP:
+    lib_name: BAG_prim
+    cell_name: res_metal
+    instpins:
+      MINUS:
+        direction: inputOutput
+        net_name: "rp"
+        num_bits: 1
+      PLUS:
+        direction: inputOutput
+        net_name: "xp"
+        num_bits: 1

@@ -191,12 +191,12 @@ class HighPassDiffCore(ResArrayBase):
         self._sch_params = dict(
             l=l_unit * lay_unit * res,
             w=w,
-            res_type=res_type,
+            intent=res_type,
             nser=nser,
             ndum=ndum,
-            res_vm_dim=(res_vm_w * res * lay_unit, res_vm_l * res * lay_unit),
-            res_in_dim=(res_in_w * res * lay_unit, res_in_w * res * lay_unit),
-            res_out_dim=(res_out_w * res * lay_unit, res_out_w * res * lay_unit),
+            res_vm_info=(vm_layer, res_vm_w * res * lay_unit, res_vm_l * res * lay_unit),
+            res_in_info=(hm_layer, res_in_w * res * lay_unit, res_in_w * res * lay_unit),
+            res_out_info=(hm_layer, res_out_w * res * lay_unit, res_out_w * res * lay_unit),
         )
 
     def connect_resistors(self, ndum, nser):
