@@ -7,6 +7,7 @@ from typing import Dict, Set, Any
 
 from bag.util.search import BinaryIterator
 from bag.layout.util import BBox
+from bag.layout.routing import TrackID
 from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase, ResArrayBaseInfo
@@ -52,7 +53,8 @@ class HighPassDiffCore(ResArrayBase):
             ndum='number of dummy resistors.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
-            cap_sep='Capacitor separation, in resolution units.',
+            cap_spx='Capacitor horizontal separation, in resolution units.',
+            cap_spy='Capacitor vertical space from resistor ports, in resolution units.',
             cap_margin='Capacitor space from edge, in resolution units.',
             show_pins='True to show pins.',
         )
@@ -63,7 +65,8 @@ class HighPassDiffCore(ResArrayBase):
         return dict(
             res_type='standard',
             res_options=None,
-            cap_sep=0,
+            cap_spx=0,
+            cap_spy=0,
             cap_margin=0,
             show_pins=True,
         )
@@ -79,7 +82,8 @@ class HighPassDiffCore(ResArrayBase):
         ndum = self.params['ndum']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
-        cap_sep = self.params['cap_sep']
+        cap_spx = self.params['cap_spx']
+        cap_spy = self.params['cap_spy']
         cap_margin = self.params['cap_margin']
         show_pins = self.params['show_pins']
 
@@ -107,37 +111,110 @@ class HighPassDiffCore(ResArrayBase):
         l_unit = bin_iter.get_last_save()
         nx = 2 * (nser + ndum)
         self.draw_array(l_unit * lay_unit * res, w, sub_type, threshold, nx=nx, ny=1,
-                        top_layer=top_layer, res_type=res_type, ext_dir='y', options=res_options,
-                        connect_up=True, half_blk_x=True, half_blk_y=True, min_height=h_unit)
+                        top_layer=top_layer, res_type=res_type, grid_type=None, ext_dir='y',
+                        options=res_options, connect_up=True, half_blk_x=True, half_blk_y=True,
+                        min_height=h_unit)
+        # connect resistors
+        vdd, biasp, biasn, outp, outn = self.connect_resistors(ndum, nser)
+        # draw MOM cap
+        xl = self.grid.get_wire_bounds(biasp.layer_id, biasp.track_id.base_index,
+                                       width=biasp.track_id.width, unit_mode=True)[1]
+        xr = self.grid.get_wire_bounds(biasn.layer_id, biasn.track_id.base_index,
+                                       width=biasn.track_id.width, unit_mode=True)[0]
+        caplp, capln, caprp, caprn = self.draw_mom_cap(nser, xl, xr, cap_spx, cap_spy, cap_margin)
+
+        # connect resistors to MOM cap
+        outp = self.connect_to_track_wires(outp, capln)
+        outn = self.connect_to_track_wires(outn, caprn)
+
+        # add pins
+        self.add_pin('biasp', biasp, show=show_pins)
+        self.add_pin('biasn', biasn, show=show_pins)
+        self.add_pin('outp', outp, show=show_pins)
+        self.add_pin('outn', outn, show=show_pins)
+        self.add_pin('inp', caplp, show=show_pins)
+        self.add_pin('inn', caprp, show=show_pins)
+        self.add_pin('VDD', vdd, show=show_pins)
+
+        self._sch_params = dict(
+            l=l_unit * lay_unit * res,
+            w=w,
+            res_type=res_type,
+            nser=nser,
+            ndum=ndum,
+        )
+
+    def connect_resistors(self, ndum, nser):
+        nx = 2 * (nser + ndum)
+        biasp, biasn, outp, outn = [], [], None, None
+        for idx in range(ndum):
+            biasp.extend(self.get_res_ports(0, idx))
+            biasn.extend(self.get_res_ports(0, nx - 1 - idx))
+        for idx in range(ndum, nser + ndum):
+            cpl = self.get_res_ports(0, idx)
+            cpr = self.get_res_ports(0, nx - 1 - idx)
+            conn_par = (idx - ndum) % 2
+            if idx == ndum:
+                biasp.append(cpl[1 - conn_par])
+                biasn.append(cpr[1 - conn_par])
+            if idx == nser + ndum - 1:
+                if idx == ndum:
+                    outp = cpl[conn_par]
+                    outn = cpr[conn_par]
+                else:
+                    outp = cpl[1 - conn_par]
+                    outn = cpr[1 - conn_par]
+            else:
+                npl = self.get_res_ports(0, idx + 1)
+                npr = self.get_res_ports(0, nx - 2 - idx)
+                self.connect_wires([npl[conn_par], cpl[conn_par]])
+                self.connect_wires([npr[conn_par], cpr[conn_par]])
+
+        biasp = self.connect_wires(biasp)
+        biasn = self.connect_wires(biasn)
+
+        # connect bias wires to vertical tracks
+        vm_layer = self.bot_layer_id + 1
+        t0 = self.grid.find_next_track(vm_layer, 0, half_track=True,
+                                       mode=1, unit_mode=True)
+        t1 = self.grid.find_next_track(vm_layer, self.bound_box.right_unit, half_track=True,
+                                       mode=-1, unit_mode=True)
+        bp_tid = TrackID(vm_layer, t0 + 1)
+        bn_tid = TrackID(vm_layer, t1 - 1)
+        biasp = self.connect_to_tracks(biasp, bp_tid)
+        biasn = self.connect_to_tracks(biasn, bn_tid)
+        vdd = self.add_wires(vm_layer, t0, biasp.lower_unit, biasp.upper_unit,
+                             num=2, pitch=t1 - t0, unit_mode=True)
+
+        return vdd, biasp, biasn, outp, outn
+
+    def draw_mom_cap(self, nser, xl, xr, cap_spx, cap_spy, cap_margin):
+        res = self.grid.resolution
 
         # get port location
         bot_pin, top_pin = self.get_res_ports(0, 0)
         bot_box = bot_pin.get_bbox_array(self.grid).base
         top_box = top_pin.get_bbox_array(self.grid).base
+        cap_yb = bot_box.top_unit + cap_spy
+        cap_yt = top_box.bottom_unit - cap_spy
 
         # draw MOM cap
         xc = self.bound_box.xc_unit
         num_layer = 2
         bot_layer = self.bot_layer_id
         top_layer = bot_layer + num_layer - 1
+        # set bottom parity based on number of resistors to avoid via-to-via spacing errors
+        bot_parity = (0, 1) if nser % 2 == 0 else (1, 0)
+        port_parity = {bot_layer: bot_parity, top_layer: (1, 0)}
         spx_le = self.grid.get_line_end_space(bot_layer, 1, unit_mode=True)
         spx_le2 = -(-spx_le // 2)
-        cap_sep = max(cap_sep, spx_le2)
-        cap_margin = max(cap_margin, spx_le)
-        boxl = BBox(cap_margin, bot_box.top_unit, xc - cap_sep, top_box.bottom_unit,
-                    res, unit_mode=True)
-        portsl = self.add_mom_cap(boxl, bot_layer, num_layer, port_parity=(0, 1))
-        boxr = BBox(xc + cap_sep, bot_box.top_unit, self.bound_box.right_unit - cap_margin,
-                    top_box.bottom_unit, res, unit_mode=True)
-        portsr = self.add_mom_cap(boxr, bot_layer, num_layer, port_parity=(1, 0))
+        cap_spx = max(cap_spx, spx_le2)
+        boxl = BBox(xl + cap_margin, cap_yb, xc - cap_spx, cap_yt, res, unit_mode=True)
+        portsl = self.add_mom_cap(boxl, bot_layer, num_layer, port_parity=port_parity)
+        boxr = BBox(xc + cap_spx, cap_yb, xr - cap_margin, cap_yt, res, unit_mode=True)
+        port_parity[top_layer] = (0, 1)
+        portsr = self.add_mom_cap(boxr, bot_layer, num_layer, port_parity=port_parity)
 
-        self.add_pin('caplp', portsl[top_layer][0], show=show_pins)
-        self.add_pin('capln', portsl[top_layer][1], show=show_pins)
-        self.add_pin('caprp', portsr[top_layer][0], show=show_pins)
-        self.add_pin('caprn', portsr[top_layer][1], show=show_pins)
-
-        self._sch_params = dict(
-            l=l_unit * lay_unit * res,
-            w=w,
-            res_type=res_type,
-        )
+        caplp, capln = portsl[top_layer]
+        caprp, caprn = portsr[top_layer]
+        return caplp, capln, caprp, caprn
