@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import TYPE_CHECKING, Dict, Any, Set
+from typing import TYPE_CHECKING, Dict, Any, Set, Union
 
 import importlib
 
@@ -10,6 +10,7 @@ from bag.layout.template import TemplateBase
 from abs_templates_ec.analog_core.substrate import SubstrateContact
 
 if TYPE_CHECKING:
+    from bag.layout.routing import RoutingGrid
     from bag.layout.template import TemplateDB
 
 
@@ -41,6 +42,20 @@ class SubstrateWrapper(TemplateBase):
         return self._sch_params
 
     @classmethod
+    def get_substrate_height(cls, grid, top_layer, lch, w, sub_type, threshold,
+                             end_mode=15, **kwargs):
+        # type: (RoutingGrid, int, float, Union[int, float], str, str, int, **kwargs) -> int
+        """Compute height of the substrate contact block, given parameters."""
+        return SubstrateContact.get_substrate_height(grid, top_layer, lch, w, sub_type, threshold,
+                                                     end_mode=end_mode, **kwargs)
+
+    @classmethod
+    def get_sub_end_modes(cls, end_mode):
+        bot_end_mode = end_mode | 0b0010
+        top_end_mode = ((end_mode | 0b0011) & 0b1110) | ((end_mode & 0b0010) >> 1)
+        return bot_end_mode, top_end_mode
+
+    @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
         return {
@@ -50,6 +65,7 @@ class SubstrateWrapper(TemplateBase):
             'sub_w': 'substrate contact width. Set to 0 to disable drawing substrate contact.',
             'sub_lch': 'substrate contact channel length.',
             'sub_tr_w': 'substrate track width in number of tracks.  None for default.',
+            'end_mode': 'The substrate end_mode.',
             'show_pins': 'True to show pins.',
         }
 
@@ -58,6 +74,7 @@ class SubstrateWrapper(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             sub_tr_w=None,
+            end_mode=15,
             show_pins=True,
         )
 
@@ -69,6 +86,7 @@ class SubstrateWrapper(TemplateBase):
         sub_lch = self.params['sub_lch']
         sub_w = self.params['sub_w']
         sub_tr_w = self.params['sub_tr_w']
+        end_mode = self.params['end_mode']
         show_pins = self.params['show_pins']
         params = self.params['params'].copy()
         sub_type = params['sub_type']
@@ -79,13 +97,13 @@ class SubstrateWrapper(TemplateBase):
 
         sch_params, sub_name = self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_tr_w,
                                                        sub_type, threshold, show_pins,
-                                                       is_passive=True)
+                                                       end_mode=end_mode, is_passive=True)
 
         self._sch_params = sch_params.copy()
         self._sch_params['sub_name'] = sub_name
 
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
-                           show_pins, is_passive=True):
+                           show_pins, end_mode=15, is_passive=True):
         params['show_pins'] = False
 
         if sub_w == 0:
@@ -120,6 +138,7 @@ class SubstrateWrapper(TemplateBase):
                 well_width = master.get_well_width()
             else:
                 well_width = master_box.width
+            bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
             sub_params = dict(
                 top_layer=top_layer,
                 lch=sub_lch,
@@ -128,21 +147,24 @@ class SubstrateWrapper(TemplateBase):
                 threshold=threshold,
                 port_width=sub_tr_w,
                 well_width=well_width,
+                end_mode=bot_end_mode,
+                is_passive=is_passive,
                 max_nxblk=master_box.width_unit // blkw,
                 show_pins=False,
-                is_passive=is_passive,
             )
-            sub_master = self.new_template(params=sub_params, temp_cls=SubstrateContact)
-            sub_box = sub_master.bound_box
-            sub_x = (master_box.width_unit - sub_box.width_unit) // 2
+            bsub_master = self.new_template(params=sub_params, temp_cls=SubstrateContact)
+            tsub_master = bsub_master.new_template_with(end_mode=top_end_mode)
+            bsub_box = bsub_master.bound_box
+            sub_x = (master_box.width_unit - bsub_box.width_unit) // 2
 
             # compute substrate X coordinate so substrate is on its own private horizontal pitch
-            bot_inst = self.add_instance(sub_master, inst_name='XBSUB', loc=(sub_x, 0),
+            bot_inst = self.add_instance(bsub_master, inst_name='XBSUB', loc=(sub_x, 0),
                                          unit_mode=True)
-            inst = self.add_instance(master, inst_name='XDEV', loc=(0, sub_box.height_unit),
+            ycur = bot_inst.bound_box.top_unit
+            inst = self.add_instance(master, inst_name='XDEV', loc=(0, ycur),
                                      unit_mode=True)
-            top_yo = sub_box.height_unit * 2 + master_box.height_unit
-            top_inst = self.add_instance(sub_master, inst_name='XTSUB', loc=(sub_x, top_yo),
+            ycur = inst.bound_box.top_unit + tsub_master.bound_box.height_unit
+            top_inst = self.add_instance(tsub_master, inst_name='XTSUB', loc=(sub_x, ycur),
                                          orient='MX', unit_mode=True)
 
             # connect implant layers of substrate contact and device together
@@ -154,9 +176,9 @@ class SubstrateWrapper(TemplateBase):
             label = sub_port_name + ':'
             self.reexport(bot_inst.get_port(sub_port_name), label=label, show=show_pins)
             self.reexport(top_inst.get_port(sub_port_name), label=label, show=show_pins)
-            arr_box = BBox(0, bot_inst.array_box.bottom_unit, inst.bound_box.right_unit,
-                           top_inst.array_box.top_unit, res, unit_mode=True)
-            bnd_box = arr_box.extend(y=0, unit_mode=True).extend(y=top_yo, unit_mode=True)
+            arr_yb, arr_yt = bot_inst.array_box.bottom_unit, top_inst.array_box.top_unit
+            arr_box = BBox(0, arr_yb, inst.bound_box.right_unit, arr_yt, res, unit_mode=True)
+            bnd_box = arr_box.extend(y=0, unit_mode=True).extend(y=ycur, unit_mode=True)
             self.array_box = arr_box
             self.set_size_from_bound_box(top_layer, bnd_box)
             self.add_cell_boundary(bnd_box)

@@ -23,7 +23,7 @@ class MOMCapCore(TemplateBase):
     Parameters
     ----------
     temp_db : :class:`bag.layout.template.TemplateDB`
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : dict[str, any]
@@ -42,6 +42,7 @@ class MOMCapCore(TemplateBase):
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
@@ -178,12 +179,12 @@ class MOMCapCore(TemplateBase):
 
 
 class MOMCapChar(SubstrateWrapper):
-    """A class that appended substrate contacts on top and bottom of a ResArrayBase.
+    """A MOM Cap with substrate contact.
 
     Parameters
     ----------
     temp_db : TemplateDB
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : Dict[str, Any]
@@ -232,8 +233,6 @@ class MOMCapChar(SubstrateWrapper):
         )
 
     def draw_layout(self):
-        """Draw the layout of a dynamic latch chain.
-        """
         sub_lch = self.params['sub_lch']
         sub_w = self.params['sub_w']
         sub_type = self.params['sub_type']

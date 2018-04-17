@@ -3,18 +3,22 @@
 """This module defines various passive high-pass filter generators
 """
 
-from typing import Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any
 
 from bag.util.search import BinaryIterator
 from bag.layout.util import BBox
 from bag.layout.routing import TrackID
-from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase, ResArrayBaseInfo
 
+from ..substrate import SubstrateWrapper
+
+if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
+
 
 class HighPassDiffCore(ResArrayBase):
-    """bias resistor for differential high pass filter.
+    """A differential RC high-pass filter.
 
     Parameters
     ----------
@@ -38,6 +42,7 @@ class HighPassDiffCore(ResArrayBase):
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
 
     @classmethod
@@ -56,6 +61,7 @@ class HighPassDiffCore(ResArrayBase):
             cap_spx='Capacitor horizontal separation, in resolution units.',
             cap_spy='Capacitor vertical space from resistor ports, in resolution units.',
             cap_margin='Capacitor space from edge, in resolution units.',
+            half_blk_x='True to allow for half horizontal blocks.',
             show_pins='True to show pins.',
         )
 
@@ -68,6 +74,7 @@ class HighPassDiffCore(ResArrayBase):
             cap_spx=0,
             cap_spy=0,
             cap_margin=0,
+            half_blk_x=True,
             show_pins=True,
         )
 
@@ -85,6 +92,7 @@ class HighPassDiffCore(ResArrayBase):
         cap_spx = self.params['cap_spx']
         cap_spy = self.params['cap_spy']
         cap_margin = self.params['cap_margin']
+        half_blk_x = self.params['half_blk_x']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
@@ -94,7 +102,7 @@ class HighPassDiffCore(ResArrayBase):
         # find resistor length
         info = ResArrayBaseInfo(self.grid, sub_type, threshold, top_layer=top_layer,
                                 res_type=res_type, ext_dir='y', options=res_options,
-                                connect_up=True, half_blk_x=True, half_blk_y=True)
+                                connect_up=True, half_blk_x=half_blk_x, half_blk_y=True)
 
         lmin, lmax = info.get_res_length_bounds()
         bin_iter = BinaryIterator(lmin, lmax, step=2)
@@ -112,8 +120,8 @@ class HighPassDiffCore(ResArrayBase):
         nx = 2 * (nser + ndum)
         self.draw_array(l_unit * lay_unit * res, w, sub_type, threshold, nx=nx, ny=1,
                         top_layer=top_layer, res_type=res_type, grid_type=None, ext_dir='y',
-                        options=res_options, connect_up=True, half_blk_x=True, half_blk_y=True,
-                        min_height=h_unit)
+                        options=res_options, connect_up=True, half_blk_x=half_blk_x,
+                        half_blk_y=True, min_height=h_unit)
         # connect resistors
         vdd, biasp, biasn, outp, outn = self.connect_resistors(ndum, nser)
         # draw MOM cap
@@ -134,7 +142,7 @@ class HighPassDiffCore(ResArrayBase):
         self.add_pin('outn', outn, show=show_pins)
         self.add_pin('inp', caplp, show=show_pins)
         self.add_pin('inn', caprp, show=show_pins)
-        self.add_pin('VDD', vdd, show=show_pins)
+        self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
 
         self._sch_params = dict(
             l=l_unit * lay_unit * res,
@@ -208,13 +216,100 @@ class HighPassDiffCore(ResArrayBase):
         port_parity = {bot_layer: bot_parity, top_layer: (1, 0)}
         spx_le = self.grid.get_line_end_space(bot_layer, 1, unit_mode=True)
         spx_le2 = -(-spx_le // 2)
-        cap_spx = max(cap_spx, spx_le2)
-        boxl = BBox(xl + cap_margin, cap_yb, xc - cap_spx, cap_yt, res, unit_mode=True)
+        cap_spx2 = max(cap_spx // 2, spx_le2)
+        boxl = BBox(xl + cap_margin, cap_yb, xc - cap_spx2, cap_yt, res, unit_mode=True)
         portsl = self.add_mom_cap(boxl, bot_layer, num_layer, port_parity=port_parity)
-        boxr = BBox(xc + cap_spx, cap_yb, xr - cap_margin, cap_yt, res, unit_mode=True)
+        boxr = BBox(xc + cap_spx2, cap_yb, xr - cap_margin, cap_yt, res, unit_mode=True)
         port_parity[top_layer] = (0, 1)
         portsr = self.add_mom_cap(boxr, bot_layer, num_layer, port_parity=port_parity)
 
         caplp, capln = portsl[top_layer]
         caprp, caprn = portsr[top_layer]
         return caplp, capln, caprp, caprn
+
+
+class HighPassDiff(SubstrateWrapper):
+    """A differential RC high-pass filter with substrate contact.
+
+    Parameters
+    ----------
+    temp_db : TemplateDB
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        return dict(
+            w='unit resistor width, in meters.',
+            h_unit='total height, in resolution units.',
+            sub_w='Substrate width.',
+            sub_lch='Substrate channel length.',
+            sub_type='the substrate type.',
+            threshold='the substrate threshold flavor.',
+            top_layer='The top layer ID',
+            nser='number of resistors in series in a branch.',
+            ndum='number of dummy resistors.',
+            res_type='Resistor intent',
+            res_options='Configuration dictionary for ResArrayBase.',
+            cap_spx='Capacitor horizontal separation, in resolution units.',
+            cap_spy='Capacitor vertical space from resistor ports, in resolution units.',
+            cap_margin='Capacitor space from edge, in resolution units.',
+            sub_tr_w='substrate track width in number of tracks.  None for default.',
+            end_mode='substrate end mode flag.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            res_type='standard',
+            res_options=None,
+            cap_spx=0,
+            cap_spy=0,
+            cap_margin=0,
+            sub_tr_w=None,
+            end_mode=15,
+            show_pins=True,
+        )
+
+    def draw_layout(self):
+        h_unit = self.params['h_unit']
+        sub_w = self.params['sub_w']
+        sub_lch = self.params['sub_lch']
+        sub_type = self.params['sub_type']
+        threshold = self.params['threshold']
+        top_layer = self.params['top_layer']
+        sub_tr_w = self.params['sub_tr_w']
+        end_mode = self.params['end_mode']
+        show_pins = self.params['show_pins']
+
+        # compute substrate contact height, subtract from h_unit
+        bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
+        h_subb = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                                           threshold, end_mode=bot_end_mode, is_passive=True)
+        h_subt = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                                           threshold, end_mode=top_end_mode, is_passive=True)
+
+        params = self.params.copy()
+        params['h_unit'] = h_unit - h_subb - h_subt
+        sch_params, sub_name = self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w,
+                                                       sub_tr_w, sub_type, threshold, show_pins,
+                                                       end_mode=end_mode, is_passive=True)
+
+        self._sch_params = sch_params.copy()
+        self._sch_params['sub_name'] = sub_name
