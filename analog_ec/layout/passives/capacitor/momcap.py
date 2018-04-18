@@ -117,6 +117,7 @@ class MOMCapCore(TemplateBase):
         self.set_size_from_bound_box(port_layer, bnd_box, round_up=True,
                                      half_blk_x=half_blk_x, half_blk_y=half_blk_y)
         bnd_box = self.bound_box
+        self.array_box = bnd_box
 
         # draw cap
         cap_width = bnd_box.width_unit - 2 * cap_margin
