@@ -345,6 +345,8 @@ class HighPassDiff(SubstrateWrapper):
         sub_type = self.params['sub_type']
         threshold = self.params['threshold']
         top_layer = self.params['top_layer']
+        in_tr_info = self.params['in_tr_info']
+        out_tr_info = self.params['out_tr_info']
         sub_tr_w = self.params['sub_tr_w']
         sub_tids = self.params['sub_tids']
         end_mode = self.params['end_mode']
@@ -357,8 +359,13 @@ class HighPassDiff(SubstrateWrapper):
         h_subt = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
                                            threshold, end_mode=top_end_mode, is_passive=True)
 
+        hm_layer = ResArrayBase.get_port_layer_id(self.grid.tech_info) + 2
+        tr_off = self.grid.find_next_track(hm_layer, h_subb, half_track=True, mode=1,
+                                           unit_mode=True)
         params = self.params.copy()
         params['h_unit'] = h_unit - h_subb - h_subt
+        params['in_tr_info'] = (in_tr_info[0] - tr_off, in_tr_info[1] - tr_off, in_tr_info[2])
+        params['out_tr_info'] = (out_tr_info[0] - tr_off, out_tr_info[1] - tr_off, out_tr_info[2])
         self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
                                 sub_tids=sub_tids, )
