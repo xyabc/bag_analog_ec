@@ -31,7 +31,6 @@ class bag_analog_ec__high_pass_diff(Module):
             intent='resistor type.',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
-            res_vm_info='vertical metal resistor information.',
             res_in_info='input metal resistor information.',
             res_out_info='output metal resistor information.',
             sub_name='substrate name.  Empty string to disable.',
@@ -44,7 +43,7 @@ class bag_analog_ec__high_pass_diff(Module):
             sub_name='VSS',
         )
 
-    def design(self, l, w, intent, nser, ndum, res_vm_info, res_in_info, res_out_info, sub_name):
+    def design(self, l, w, intent, nser, ndum, res_in_info, res_out_info, sub_name):
         if ndum < 0 or nser <= 0:
             raise ValueError('Illegal values of ndum or nser.')
 
@@ -53,7 +52,11 @@ class bag_analog_ec__high_pass_diff(Module):
             # delete substrate pin
             self.remove_pin('VSS')
         elif sub_name != 'VSS':
-            self.rename_pin('VSS', sub_name)
+            if sub_name == 'VDD':
+                self.remove_pin('VSS')
+                self.delete_instance('XNCVDD')
+            else:
+                self.rename_pin('VSS', sub_name)
 
         # design dummy
         if ndum == 0:
@@ -97,8 +100,8 @@ class bag_analog_ec__high_pass_diff(Module):
                 self.array_instance(inst_name, name_list, term_list=term_list)
 
         # design metal resistors
-        names_list = [('RMIP', 'RMIN'), ('RMOP', 'RMON'), ('RMVP', 'RMVN')]
-        info_list = [res_in_info, res_out_info, res_vm_info]
+        names_list = [('RMIP', 'RMIN'), ('RMOP', 'RMON')]
+        info_list = [res_in_info, res_out_info]
         for res_names, (res_lay, res_w, res_l) in zip(names_list, info_list):
             for name in res_names:
                 self.instances[name].design(layer=res_lay, w=res_w, l=res_l)

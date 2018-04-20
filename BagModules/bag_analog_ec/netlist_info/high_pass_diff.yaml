@@ -40,7 +40,7 @@ instances:
     instpins:
       PLUS:
         direction: inputOutput
-        net_name: "rn"
+        net_name: "xn"
         num_bits: 1
       MINUS:
         direction: inputOutput
@@ -56,7 +56,7 @@ instances:
     instpins:
       PLUS:
         direction: inputOutput
-        net_name: "rp"
+        net_name: "xp"
         num_bits: 1
       MINUS:
         direction: inputOutput
@@ -122,18 +122,6 @@ instances:
         direction: inputOutput
         net_name: "outn"
         num_bits: 1
-  RMVN:
-    lib_name: BAG_prim
-    cell_name: res_metal
-    instpins:
-      MINUS:
-        direction: inputOutput
-        net_name: "rn"
-        num_bits: 1
-      PLUS:
-        direction: inputOutput
-        net_name: "xn"
-        num_bits: 1
   RMIP:
     lib_name: BAG_prim
     cell_name: res_metal
@@ -158,15 +146,27 @@ instances:
         direction: inputOutput
         net_name: "outp"
         num_bits: 1
-  RMVP:
-    lib_name: BAG_prim
-    cell_name: res_metal
+  XNCVDD:
+    lib_name: basic
+    cell_name: noConn
     instpins:
-      MINUS:
+      noConn:
         direction: inputOutput
-        net_name: "rp"
+        net_name: "VDD"
         num_bits: 1
-      PLUS:
+  XNC1:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
         direction: inputOutput
-        net_name: "xp"
+        net_name: "yn"
+        num_bits: 1
+  XNC0:
+    lib_name: basic
+    cell_name: noConn
+    instpins:
+      noConn:
+        direction: inputOutput
+        net_name: "yp"
         num_bits: 1
