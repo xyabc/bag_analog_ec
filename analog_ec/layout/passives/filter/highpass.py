@@ -137,20 +137,8 @@ class HighPassDiffCore(ResArrayBase):
 
         # connect resistors to MOM cap, and draw metal resistors
         vm_layer = self.bot_layer_id + 1
-        outp_v = self.connect_to_tracks(outp_h, capln.track_id)
-        outn_v = self.connect_to_tracks(outn_h, caprn.track_id)
-        tr_w = capln.track_id.width
-        res_vm_w = self.grid.get_track_width(vm_layer, tr_w, unit_mode=True)
-        if outp_v.middle_unit < capln.middle_unit:
-            yb, yt = outp_v.upper_unit, capln.lower_unit
-        else:
-            yb, yt = outp_v.lower_unit, capln.upper_unit
-        yt = max(yt, yb + res_vm_w)
-        res_vm_l = yt - yb
-        self.add_res_metal_warr(vm_layer, outp_v.track_id.base_index, yb, yt,
-                                width=tr_w, unit_mode=True)
-        self.add_res_metal_warr(vm_layer, outn_v.track_id.base_index, yb, yt,
-                                width=tr_w, unit_mode=True)
+        self.connect_to_tracks(outp_h, capln.track_id)
+        self.connect_to_tracks(outn_h, caprn.track_id)
 
         # connect outputs to horizontal tracks
         hm_layer = vm_layer + 1
@@ -194,7 +182,6 @@ class HighPassDiffCore(ResArrayBase):
             intent=res_type,
             nser=nser,
             ndum=ndum,
-            res_vm_info=(vm_layer, res_vm_w * res * lay_unit, res_vm_l * res * lay_unit),
             res_in_info=(hm_layer, res_in_w * res * lay_unit, res_in_w * res * lay_unit),
             res_out_info=(hm_layer, res_out_w * res * lay_unit, res_out_w * res * lay_unit),
         )
@@ -248,31 +235,70 @@ class HighPassDiffCore(ResArrayBase):
 
         # get port location
         bot_pin, top_pin = self.get_res_ports(0, 0)
-        bot_box = bot_pin.get_bbox_array(self.grid).base
-        top_box = top_pin.get_bbox_array(self.grid).base
-        cap_yb = bot_box.top_unit + cap_spy
-        cap_yt = top_box.bottom_unit - cap_spy
+        bot_pin_box = bot_pin.get_bbox_array(self.grid).base
+        top_pin_box = top_pin.get_bbox_array(self.grid).base
+        bnd_box = self.bound_box
+        cap_yb_list = [bnd_box.bottom_unit + cap_spy, bot_pin_box.top_unit + cap_spy,
+                       top_pin_box.top_unit + cap_spy]
+        cap_yt_list = [bot_pin_box.bottom_unit - cap_spy, top_pin_box.bottom_unit - cap_spy,
+                       bnd_box.top_unit - cap_spy]
 
         # draw MOM cap
-        xc = self.bound_box.xc_unit
+        xc = bnd_box.xc_unit
         num_layer = 2
         bot_layer = self.bot_layer_id
         top_layer = bot_layer + num_layer - 1
         # set bottom parity based on number of resistors to avoid via-to-via spacing errors
-        bot_parity = (0, 1) if nser % 2 == 0 else (1, 0)
-        port_parity = {bot_layer: bot_parity, top_layer: (1, 0)}
+        if nser % 2 == 0:
+            bot_par_list = [(1, 0), (0, 1), (1, 0)]
+        else:
+            bot_par_list = [(0, 1), (1, 0), (0, 1)]
+
         spx_le = self.grid.get_line_end_space(bot_layer, 1, unit_mode=True)
         spx_le2 = -(-spx_le // 2)
         cap_spx2 = max(cap_spx // 2, spx_le2)
-        boxl = BBox(xl + cap_margin, cap_yb, xc - cap_spx2, cap_yt, res, unit_mode=True)
-        portsl = self.add_mom_cap(boxl, bot_layer, num_layer, port_parity=port_parity)
-        boxr = BBox(xc + cap_spx2, cap_yb, xr - cap_margin, cap_yt, res, unit_mode=True)
-        port_parity[top_layer] = (0, 1)
-        portsr = self.add_mom_cap(boxr, bot_layer, num_layer, port_parity=port_parity)
+        cap_xl_list = [xl + cap_margin, xc + cap_spx2]
+        cap_xr_list = [xc - cap_spx2, xr - cap_margin]
 
-        caplp, capln = portsl[top_layer]
-        caprp, caprn = portsr[top_layer]
-        return caplp[0], capln[0], caprp[0], caprn[0]
+        rects = []
+        capp_list, capn_list = [], []
+        port_parity = {top_layer: (1, 0)}
+        for cap_xl, cap_xr in zip(cap_xl_list, cap_xr_list):
+            curp_list, curn_list = [], []
+            for idx, (cap_yb, cap_yt, bot_par) in enumerate(zip(cap_yb_list, cap_yt_list,
+                                                                bot_par_list)):
+                port_parity[bot_layer] = bot_par
+                cap_box = BBox(cap_xl, cap_yb, cap_xr, cap_yt, res, unit_mode=True)
+                if idx == 1:
+                    ports, cur_rects = self.add_mom_cap(cap_box, bot_layer, num_layer,
+                                                        port_parity=port_parity,
+                                                        return_cap_wires=True)
+                    rects.extend(cur_rects[-1])
+                else:
+                    ports = self.add_mom_cap(cap_box, bot_layer, num_layer,
+                                             port_parity=port_parity)
+                capp, capn = ports[top_layer]
+                curp_list.append(capp[0])
+                curn_list.append(capn[0])
+
+            capp_list.append(curp_list)
+            capn_list.append(curn_list)
+            port_parity[top_layer] = (0, 1)
+
+        caplp = self.connect_wires(capp_list[0])[0]
+        caprp = self.connect_wires(capp_list[1])[0]
+        capln = self.connect_wires(capn_list[0])[0]
+        caprn = self.connect_wires(capn_list[1])[0]
+
+        # merge cap wires
+        yb = caplp.lower_unit
+        yt = caplp.upper_unit
+        for rect in rects:
+            box = BBox(rect.bbox.left_unit, yb, rect.bbox.right_unit, yt, res, unit_mode=True)
+            self.add_rect(rect.layer, box)
+
+        # return ports
+        return caplp, capln, caprp, caprn
 
 
 class HighPassDiff(SubstrateWrapper):
