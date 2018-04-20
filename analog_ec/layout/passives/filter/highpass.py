@@ -58,6 +58,7 @@ class HighPassDiffCore(ResArrayBase):
             ndum='number of dummy resistors.',
             in_tr_info='Input track info.',
             out_tr_info='Output track info.',
+            vdd_tr_info='Supply track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
@@ -71,6 +72,7 @@ class HighPassDiffCore(ResArrayBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            vdd_tr_info=None,
             res_type='standard',
             res_options=None,
             cap_spx=0,
@@ -91,6 +93,7 @@ class HighPassDiffCore(ResArrayBase):
         ndum = self.params['ndum']
         in_tr_info = self.params['in_tr_info']
         out_tr_info = self.params['out_tr_info']
+        vdd_tr_info = self.params['vdd_tr_info']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
         cap_spx = self.params['cap_spx']
@@ -171,7 +174,13 @@ class HighPassDiffCore(ResArrayBase):
                               width=tr_w, unit_mode=True)
         outn = self.add_wires(hm_layer, nidx, tr_upper + res_out_w, tr_upper + 2 * res_out_w,
                               width=tr_w, unit_mode=True)
-
+        # connect/export vdd
+        if vdd_tr_info is None:
+            self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
+        else:
+            for tr_info in vdd_tr_info:
+                tid = TrackID(hm_layer, tr_info[0], width=tr_info[1])
+                self.add_pin('VDD', self.connect_to_tracks(vdd, tid), show=show_pins)
         # add pins
         self.add_pin('biasp', biasp, show=show_pins)
         self.add_pin('biasn', biasn, show=show_pins)
@@ -179,7 +188,6 @@ class HighPassDiffCore(ResArrayBase):
         self.add_pin('outn', outn, show=show_pins)
         self.add_pin('inp', inp, show=show_pins)
         self.add_pin('inn', inn, show=show_pins)
-        self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
 
         self._sch_params = dict(
             l=l_unit * lay_unit * res,
@@ -343,6 +351,7 @@ class HighPassDiff(SubstrateWrapper):
             ndum='number of dummy resistors.',
             in_tr_info='Input track info.',
             out_tr_info='Output track info.',
+            vdd_tr_info='Supply track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
@@ -358,6 +367,7 @@ class HighPassDiff(SubstrateWrapper):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            vdd_tr_info=None,
             res_type='standard',
             res_options=None,
             cap_spx=0,
@@ -378,6 +388,7 @@ class HighPassDiff(SubstrateWrapper):
         top_layer = self.params['top_layer']
         in_tr_info = self.params['in_tr_info']
         out_tr_info = self.params['out_tr_info']
+        vdd_tr_info = self.params['vdd_tr_info']
         sub_tr_w = self.params['sub_tr_w']
         sub_tids = self.params['sub_tids']
         end_mode = self.params['end_mode']
@@ -397,6 +408,11 @@ class HighPassDiff(SubstrateWrapper):
         params['h_unit'] = h_unit - h_subb - h_subt
         params['in_tr_info'] = (in_tr_info[0] - tr_off, in_tr_info[1] - tr_off, in_tr_info[2])
         params['out_tr_info'] = (out_tr_info[0] - tr_off, out_tr_info[1] - tr_off, out_tr_info[2])
+        if vdd_tr_info is not None:
+            new_info_list = []
+            for tr_info in vdd_tr_info:
+                new_info_list.append((tr_info[0] - tr_off, tr_info[1]))
+            params['vdd_tr_info'] = new_info_list
         self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
                                 sub_tids=sub_tids, )
