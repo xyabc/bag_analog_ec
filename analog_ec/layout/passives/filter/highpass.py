@@ -103,9 +103,14 @@ class HighPassDiffCore(ResArrayBase):
         lay_unit = self.grid.layout_unit
         w_unit = int(round(w / lay_unit / res))
 
+        if res_options is None:
+            my_options = dict(well_end_mode=2)
+        else:
+            my_options = res_options.copy()
+            my_options['well_end_mode'] = 2
         # find resistor length
         info = ResArrayBaseInfo(self.grid, sub_type, threshold, top_layer=top_layer,
-                                res_type=res_type, ext_dir='y', options=res_options,
+                                res_type=res_type, ext_dir='y', options=my_options,
                                 connect_up=True, half_blk_x=half_blk_x, half_blk_y=True)
 
         lmin, lmax = info.get_res_length_bounds()
@@ -124,7 +129,7 @@ class HighPassDiffCore(ResArrayBase):
         nx = 2 * (nser + ndum)
         self.draw_array(l_unit * lay_unit * res, w, sub_type, threshold, nx=nx, ny=1,
                         top_layer=top_layer, res_type=res_type, grid_type=None, ext_dir='y',
-                        options=res_options, connect_up=True, half_blk_x=half_blk_x,
+                        options=my_options, connect_up=True, half_blk_x=half_blk_x,
                         half_blk_y=True, min_height=h_unit)
         # connect resistors
         vdd, biasp, biasn, outp_h, outn_h = self.connect_resistors(ndum, nser)
