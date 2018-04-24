@@ -64,6 +64,7 @@ class DiffAmpSelfBiased(AnalogBase):
             guard_ring_nf='Width of the guard ring, in number of fingers.  '
                           '0 to disable guard ring.',
             top_layer='The AnalogBase top layer.',
+            tech_cls_name='Technology class name.',
         )
 
     @classmethod
@@ -72,6 +73,7 @@ class DiffAmpSelfBiased(AnalogBase):
             show_pins=True,
             guard_ring_nf=0,
             top_layer=None,
+            tech_cls_name=None,
         )
 
     def draw_layout(self):
@@ -91,8 +93,13 @@ class DiffAmpSelfBiased(AnalogBase):
         show_pins = self.params['show_pins']
         guard_ring_nf = self.params['guard_ring_nf']
         top_layer = self.params['top_layer']
+        tech_cls_name = self.params['tech_cls_name']
 
-        ana_info = AnalogBaseInfo(self.grid, lch, guard_ring_nf, top_layer=top_layer)
+        if tech_cls_name is not None:
+            self.set_tech_class(tech_cls_name)
+
+        ana_info = AnalogBaseInfo(self.grid, lch, guard_ring_nf, top_layer=top_layer,
+                                  tech_cls_name=tech_cls_name)
         min_fg_sep = ana_info.min_fg_sep
 
         # calculate total number of fingers
