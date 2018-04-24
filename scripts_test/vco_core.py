@@ -42,17 +42,6 @@ class VCOCore(AnalogBase):
         return self._sch_params
 
     @classmethod
-    def get_default_param_values(cls):
-        # type: () -> Dict[str, Any]
-        return dict(
-            top_layer=None,
-            end_mode=15,
-            guard_ring_nf=0,
-            options=None,
-            show_pins=True,
-        )
-
-    @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
         return dict(
@@ -72,6 +61,19 @@ class VCOCore(AnalogBase):
             guard_ring_nf='Number of guard ring fingers.',
             options='other AnalogBase options',
             show_pins='True to create pin labels.',
+            tech_cls_name='Technology class name.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            top_layer=None,
+            end_mode=15,
+            guard_ring_nf=0,
+            options=None,
+            show_pins=True,
+            tech_cls_name=None,
         )
 
     def draw_layout(self):
@@ -91,9 +93,12 @@ class VCOCore(AnalogBase):
         guard_ring_nf = self.params['guard_ring_nf']
         options = self.params['options']
         show_pins = self.params['show_pins']
+        tech_cls_name = self.params['tech_cls_name']
 
         if options is None:
             options = {}
+        if tech_cls_name is not None:
+            self.set_tech_class(tech_cls_name)
 
         seg_gm = seg_dict['gm']
         seg_tail = seg_dict['tail']
