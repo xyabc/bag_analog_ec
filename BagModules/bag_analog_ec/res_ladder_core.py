@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict
+from typing import Dict, Any
 
 import os
 import pkg_resources
@@ -8,7 +8,8 @@ import pkg_resources
 from bag.design import Module
 
 
-yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info', 'res_ladder_core.yaml'))
+yaml_file = pkg_resources.resource_filename(__name__, os.path.join('netlist_info',
+                                                                   'res_ladder_core.yaml'))
 
 
 # noinspection PyPep8Naming
@@ -24,30 +25,54 @@ class bag_analog_ec__res_ladder_core(Module):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Optional[Dict[str, str]]
-            dictionary from parameter names to descriptions.
-        """
         return dict(
+            l='unit resistor length, in meters.',
+            w='unit resistor width, in meters.',
+            intent='resistor type.',
+            nout='number of outputs.',
+            ndum='number of dummy resistors.',
+            sub_name='substrate name.  Empty string to disable.',
         )
 
-    def design(self):
-        """To be overridden by subclasses to design this module.
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            sub_name='VSS',
+        )
 
-        This method should fill in values for all parameters in
-        self.parameters.  To design instances of this module, you can
-        call their design() method or any other ways you coded.
+    def design(self, l, w, intent, nout, ndum, sub_name):
+        if ndum < 0 or nout < 2:
+            raise ValueError('Illegal values of ndum or npar')
 
-        To modify schematic structure, call:
+        # handle substrate pin
+        rename = False
+        if not sub_name:
+            # delete substrate pin
+            self.remove_pin('VSS')
+        elif sub_name != 'VSS':
+            rename = True
+            self.rename_pin('VSS', sub_name)
 
-        rename_pin()
-        delete_instance()
-        replace_instance_master()
-        reconnect_instance_terminal()
-        restore_instance()
-        array_instance()
-        """
-        pass
+        # design dummy
+        if ndum == 0:
+            self.delete_instance('RDUM')
+        else:
+            self.instances['RDUM'].design(w=w, l=l, intent=intent)
+            if ndum > 1:
+                if rename:
+                    term_list = [dict(BULK=sub_name, PLUS=sub_name, MINUS=sub_name)]
+                else:
+                    term_list = None
+                self.array_instance('RDUM', ['RDUM<%d:0>' % (ndum - 1)], term_list=term_list)
+            elif rename:
+                for name in ('BULK', 'PLUS', 'MINUS'):
+                    self.reconnect_instance_terminal('RDUM', name, sub_name)
+
+        # design main resistors
+        self.instances['RCORE'].design(w=w, l=l, intent=intent)
+        term_list = [dict(PLUS='VDD,out<%d:1>' % (nout - 1),
+                          MINUS='out<%d:1>,VSS' % (nout - 1))]
+        if rename:
+            term_list[0]['BULK'] = sub_name
+        self.array_instance('RCORE', ['RCORE<%d:0>' % (nout - 1)], term_list=term_list)
