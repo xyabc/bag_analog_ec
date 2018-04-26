@@ -169,6 +169,7 @@ class ResLadderDAC(TemplateBase):
         top_layer = sup_table['VDD'][0].layer_id + 1
         self.size = self.grid.get_size_tuple(top_layer, xo, yo, round_up=True, unit_mode=True)
         self.array_box = self.bound_box
+        self.add_cell_boundary(self.bound_box)
 
         # do power fill
         sup_width = 2

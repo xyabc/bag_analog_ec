@@ -4,11 +4,11 @@ import yaml
 
 from bag.core import BagProject
 
-from analog_ec.layout.dac.rladder.core import ResLadderDAC
+from analog_ec.layout.dac.rladder.top import RDACRow
 
 
 if __name__ == '__main__':
-    with open('specs_test/rdac.yaml', 'r') as f:
+    with open('specs_test/rdac/row.yaml', 'r') as f:
         block_specs = yaml.load(f)
 
     local_dict = locals()
@@ -20,5 +20,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    # bprj.generate_cell(block_specs, ResLadderDAC)
-    bprj.generate_cell(block_specs, ResLadderDAC, gen_sch=True, run_lvs=True, debug=True)
+    bprj.generate_cell(block_specs, RDACRow)
+    # bprj.generate_cell(block_specs, RDACRow, gen_sch=True, run_lvs=True, debug=True)
