@@ -56,7 +56,7 @@ class bag_analog_ec__res_ladder_dac(Module):
 
         # design mux
         self.instances['XMUX'].design(nin0=nin0, nin1=nin1, **mux_params)
-        in_name = 'in<%d:0>' % nout_ladder
+        in_name = 'in<%d:0>' % (nout_ladder - 1)
         if nout == 1:
             self.reconnect_instance_terminal('XMUX', in_name, mid_name + ',VSS')
             self.reconnect_instance_terminal('XMUX', 'sel' + sel_suf, code_name)
@@ -65,4 +65,4 @@ class bag_analog_ec__res_ladder_dac(Module):
             self.rename_pin('out', out_name)
             term_dict = {in_name: mid_name + ',VSS', 'sel' + sel_suf: code_name,
                          'out': out_name}
-            self.array_instance('XCORE', ['XCORE<%d:0>' % (nout - 1)], term_list=[term_dict])
+            self.array_instance('XMUX', ['XMUX<%d:0>' % (nout - 1)], term_list=[term_dict])
