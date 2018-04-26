@@ -3,10 +3,14 @@
 """This module defines resistor ladder layout generators.
 """
 
-from typing import TYPE_CHECKING, Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any, Tuple
 from itertools import chain
 
+from bag.layout.template import TemplateBase
+
 from abs_templates_ec.resistor.core import ResArrayBase
+
+from analog_ec.layout.passives.substrate import SubstrateWrapper
 
 if TYPE_CHECKING:
     from bag.layout.template import TemplateDB
@@ -18,7 +22,7 @@ class ResLadderCore(ResArrayBase):
     Parameters
     ----------
     temp_db : :class:`bag.layout.template.TemplateDB`
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : Dict[str, Any]
@@ -50,16 +54,20 @@ class ResLadderCore(ResArrayBase):
             nx='number of resistors in a row.  Must be even.',
             ny='number of resistors in a column.',
             ndum='number of dummy resistors.',
-            show_pins='True to show pins.',
             res_options='Configuration dictionary for ResArrayBase.',
+            half_blk_x='True to allow half horizontal blocks.',
+            half_blk_y='True to allow half vertical blocks.',
+            show_pins='True to show pins.',
         )
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            show_pins=True,
             res_options=None,
+            half_blk_x=True,
+            half_blk_y=True,
+            show_pins=True,
         )
 
     def draw_layout(self):
@@ -72,6 +80,8 @@ class ResLadderCore(ResArrayBase):
         ny = self.params['ny']
         ndum = self.params['ndum']
         res_options = self.params['res_options']
+        half_blk_x = self.params['half_blk_x']
+        half_blk_y = self.params['half_blk_y']
 
         # error checking
         if nx % 2 != 0 or nx <= 0:
@@ -92,7 +102,8 @@ class ResLadderCore(ResArrayBase):
         min_tracks = (4 + 2 * hcon_space, 7 + vcon_space, nx, 1)
         top_layer = self.bot_layer_id + 3
         self.draw_array(l, w, sub_type, threshold, nx=nx + 2 * ndum, ny=ny + 2 * ndum,
-                        min_tracks=min_tracks, top_layer=top_layer, connect_up=True, **res_options)
+                        min_tracks=min_tracks, top_layer=top_layer, connect_up=True,
+                        half_blk_x=half_blk_x, half_blk_y=half_blk_y, **res_options)
 
         # export supplies and recompute array_box/size
         tmp = self._draw_metal_tracks(nx, ny, ndum, hcon_space)
@@ -105,9 +116,8 @@ class ResLadderCore(ResArrayBase):
             l=l,
             w=w,
             intent=res_type,
-            nser=nx,
-            npar=ny,
-            ndum=ndum,
+            nout=nx * ny,
+            ndum=(nx + ny) * 2 * ndum + 4 * ndum**2,
             sub_name='',
         )
 
@@ -363,3 +373,139 @@ class ResLadderCore(ResArrayBase):
                 self.add_pin(net_name, warr, show=show_pins)
 
         return [bcon_idx, tcon_idx], vm_tidx, xm_bot_idx, num_xm_sup
+
+
+class ResLadder(SubstrateWrapper):
+    """Adds substrate contacts to resistor ladder.
+
+    Parameters
+    ----------
+    temp_db : :class:`bag.layout.template.TemplateDB`
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs :
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._num_tracks = None  # type: Tuple[int, ...]
+
+    @property
+    def num_tracks(self):
+        # type: () -> Tuple[int, ...]
+        """Returns the number of tracks per resistor block on each routing layer."""
+        return self._num_tracks
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        ans = ResLadderCore.get_params_info()
+        ans['sub_w'] = 'substrate contact width. Set to 0 to disable drawing substrate contact.'
+        ans['sub_lch'] = 'substrate contact channel length.'
+        ans['sub_tr_w'] = 'substrate track width in number of tracks.  None for default.'
+        return ans
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        ans = ResLadderCore.get_default_param_values()
+        ans['sub_tr_w'] = None
+        return ans
+
+    def draw_layout(self):
+        # type: () -> None
+
+        res_params = self.params.copy()
+        sub_lch = res_params.pop('sub_lch')
+        sub_w = res_params.pop('sub_w')
+        sub_type = self.params['sub_type']
+        threshold = self.params['threshold']
+        sub_tr_w = self.params['sub_tr_w']
+        show_pins = self.params['show_pins']
+        inst = self.draw_layout_helper(ResLadderCore, res_params, sub_lch, sub_w, sub_tr_w,
+                                       sub_type, threshold, show_pins, is_passive=True)
+        self._num_tracks = inst.master.num_tracks
+
+
+class ResLadderTop(TemplateBase):
+    """Adds supply fill to resistor ladder.
+
+    Parameters
+    ----------
+    temp_db : :class:`bag.layout.template.TemplateDB`
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs :
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        return ResLadder.get_params_info()
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return ResLadder.get_default_param_values()
+
+    def draw_layout(self):
+        # type: () -> None
+        show_pins = self.params['show_pins']
+
+        params = self.params.copy()
+        params['show_pins'] = False
+        master = self.new_template(params=params, temp_cls=ResLadder)
+        inst = self.add_instance(master, 'XLADDER')
+        self.set_size_from_bound_box(master.top_layer, master.bound_box)
+        self.array_box = master.array_box
+        self._sch_params = master.sch_params
+
+        sup_table = {'VDD': [], 'VSS': []}
+        for name in inst.port_names_iter():
+            if name in sup_table:
+                sup_table[name].extend(inst.port_pins_iter(name))
+            else:
+                self.reexport(inst.get_port(name), show=show_pins)
+
+        vdd_warrs, vss_warrs = sup_table['VDD'], sup_table['VSS']
+        sup_layer = vdd_warrs[0].layer_id + 1
+        # get power fill width and spacing
+        sup_width = 1
+        sup_spacing = self.grid.get_num_space_tracks(sup_layer, sup_width)
+        num_sup_tracks = master.num_tracks[-1]
+        # make sure every resistor sees the same power fill
+        if sup_width + sup_spacing > num_sup_tracks:
+            raise ValueError('Cannot draw power fill with width = %d' % sup_width)
+        while num_sup_tracks % (sup_width + sup_spacing) != 0:
+            sup_spacing += 1
+
+        vdd_warrs, vss_warrs = self.do_power_fill(sup_layer, vdd_warrs, vss_warrs,
+                                                  sup_width=sup_width,
+                                                  fill_margin=0.5, edge_margin=0.2,
+                                                  sup_spacing=sup_spacing)
+        self.add_pin('VDD', vdd_warrs, show=show_pins)
+        self.add_pin('VSS', vss_warrs, show=show_pins)

@@ -206,10 +206,13 @@ class SubstrateWrapper(TemplateBase):
             self.add_cell_boundary(bnd_box)
 
             for port_name in inst.port_names_iter():
-                self.reexport(inst.get_port(port_name), show=show_pins)
+                cur_label = label if port_name == sub_port_name else ''
+                self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
 
             fg_sub = bsub_master.fg_tot
 
         self._sch_params = master.sch_params.copy()
         self._sch_params['sub_name'] = sub_port_name
         self._fg_sub = fg_sub
+
+        return inst
