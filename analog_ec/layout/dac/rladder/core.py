@@ -178,10 +178,15 @@ class ResLadderDAC(TemplateBase):
         self.add_pin('VDD', vdd_list)
         self.add_pin('VSS', vss_list)
 
+        res_sch_params = res_master.sch_params.copy()
+        mux_sch_params = rmux_master.mux_params.copy()
+        del res_sch_params['nout']
+        del mux_sch_params['nin0']
+        del mux_sch_params['nin1']
         self._sch_params = dict(
             nin0=nin0,
             nin1=nin1,
             nout=nout,
-            res_params=res_master.sch_params,
-            mux_params=rmux_master.mux_params,
+            res_params=res_sch_params,
+            mux_params=mux_sch_params,
         )

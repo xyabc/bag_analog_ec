@@ -20,5 +20,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    bprj.generate_cell(block_specs, ResLadderDAC)
-    # bprj.generate_cell(block_specs, ResLadderDAC, gen_sch=True, run_lvs=False, use_cybagoa=True)
+    # bprj.generate_cell(block_specs, ResLadderDAC)
+    bprj.generate_cell(block_specs, ResLadderDAC, gen_sch=True, run_lvs=True, debug=True)
