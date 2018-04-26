@@ -1,0 +1,60 @@
+lib_name: bag_analog_ec
+cell_name: res_ladder_dac
+pins: [ "VDD", "VSS", "sel", "out" ]
+instances:
+  XMUX:
+    lib_name: bag_digital_ec
+    cell_name: mux_passgate_2d
+    instpins:
+      sel:
+        direction: input
+        net_name: "sel"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: inputOutput
+        net_name: "out"
+        num_bits: 1
+      in:
+        direction: inputOutput
+        net_name: "vmid"
+        num_bits: 1
+  XCORE:
+    lib_name: bag_analog_ec
+    cell_name: res_ladder_core
+    instpins:
+      out:
+        direction: inputOutput
+        net_name: "vmid"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}
