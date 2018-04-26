@@ -48,6 +48,7 @@ class ResLadderDAC(TemplateBase):
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
             nout='number of outputs.',
+            lr_end_mode='left/right end mode flag.',
             show_pins='True to show pins.',
         )
 
@@ -56,6 +57,7 @@ class ResLadderDAC(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             nout=1,
+            lr_end_mode=3,
             show_pins=True,
         )
 
@@ -66,6 +68,7 @@ class ResLadderDAC(TemplateBase):
         res_params = self.params['res_params']
         mux_params = self.params['mux_params']
         nout = self.params['nout']
+        lr_end_mode = self.params['lr_end_mode']
         show_pins = self.params['show_pins']
 
         if nout <= 0:

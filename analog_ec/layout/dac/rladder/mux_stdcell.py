@@ -416,6 +416,7 @@ class RLadderMux(StdCellBase):
             col_nbits='number of column bits.',
             row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
+            top_layer='top layer ID.',
             show_pins='True to show pins.',
         )
 
@@ -423,6 +424,7 @@ class RLadderMux(StdCellBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            top_layer=None,
             show_pins=True,
         )
 
@@ -431,6 +433,7 @@ class RLadderMux(StdCellBase):
         col_nbits = self.params['col_nbits']
         row_nbits = self.params['row_nbits']
         config_file = self.params['config_file']
+        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
         # use standard cell routing grid
@@ -498,17 +501,19 @@ class RLadderMux(StdCellBase):
                     self.add_std_instance(tap_master, loc=(x_rtap, 0), ny=ny_size // 2, spy=2),
                     self.add_std_instance(tap_master, loc=(x_rtap, 1), ny=ny_size // 2, spy=2),
                     ]
-        self.set_std_size((nx_size, ny_size))
+        # get supply wires
+        vdd_list, vss_list = [], []
+        for inst in tap_list:
+            vdd_list.extend(inst.port_pins_iter('VDD'))
+            vss_list.extend(inst.port_pins_iter('VSS'))
+        sup_layer = vdd_list[0].layer_id
+
+        if top_layer is None:
+            top_layer = sup_layer + 2
+        self.set_std_size((nx_size, ny_size), top_layer=top_layer)
         # fill unused spaces
         self.fill_space()
-
-        # export supplies
-        for key in ('VDD', 'VSS'):
-            vlist = []
-            for inst in tap_list:
-                vlist.extend(inst.get_all_port_pins(key))
-            warr_list = self.connect_wires(vlist)
-            self.add_pin(key, warr_list, show=show_pins)
+        top_layer = self.top_layer
 
         # export code inputs
         for idx in range(col_nbits + row_nbits):
@@ -584,6 +589,18 @@ class RLadderMux(StdCellBase):
         out = self._up_two_layers(out[0], out_tr)
         self.add_pin('out', out, show=show_pins)
 
+        # draw power fill and export supplies
+        for next_layer in range(sup_layer + 1, top_layer + 1):
+            vdd_list, vss_list = self.do_power_fill(next_layer, vdd_list, vss_list, sup_width=2,
+                                                    fill_margin=100, edge_margin=0, unit_mode=True)
+            if top_layer - 1 <= next_layer <= top_layer:
+                suf = '_x' if self.grid.get_direction(next_layer) == 'x' else '_y'
+                self.add_pin('VDD' + suf, vdd_list, label='VDD', show=False)
+                self.add_pin('VSS' + suf, vss_list, label='VSS', show=False)
+
+        self.add_pin('VDD', vdd_list, show=show_pins)
+        self.add_pin('VSS', vss_list, show=show_pins)
+
         # set properties
         self._sch_params = dict(
             nin0=col_nbits,
@@ -654,6 +671,7 @@ class RLadderMuxArray(StdCellBase):
             col_nbits='number of column bits.',
             row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
+            top_layer='top layer ID.',
             show_pins='True to show pins.',
         )
 
@@ -661,6 +679,7 @@ class RLadderMuxArray(StdCellBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            top_layer=None,
             show_pins=True,
         )
 
@@ -670,6 +689,7 @@ class RLadderMuxArray(StdCellBase):
         col_nbits = self.params['col_nbits']
         row_nbits = self.params['row_nbits']
         config_file = self.params['config_file']
+        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
         # use standard cell routing grid
@@ -679,13 +699,14 @@ class RLadderMuxArray(StdCellBase):
 
         # place muxes
         mux_params = dict(col_nbits=col_nbits, row_nbits=row_nbits, config_file=config_file,
-                          show_pins=False)
+                          top_layer=top_layer, show_pins=False)
         mux_master = self.new_template(params=mux_params, temp_cls=RLadderMux)
         mux_ncol, mux_nrow = mux_master.std_size
+        top_layer = mux_master.top_layer
+
         mux_inst = self.add_std_instance(mux_master, nx=num_mux, spx=mux_ncol)
 
         # set size and draw boundaries
-        top_layer = mux_master.get_port('VDD').get_pins()[0].layer_id + 2
         self.set_std_size((mux_ncol * num_mux, mux_nrow), top_layer=top_layer)
         self.draw_boundaries()
 
@@ -706,17 +727,10 @@ class RLadderMuxArray(StdCellBase):
                 self.reexport(mux_inst.get_port(old_name, col=idx), net_name=new_name,
                               show=show_pins)
 
-        # connect power and do fill
-        vdd_list = mux_inst.get_all_port_pins('VDD')
-        vss_list = mux_inst.get_all_port_pins('VSS')
-        sup_layer = vdd_list[0].layer_id + 1
-        vdd_list, vss_list = self.do_power_fill(sup_layer, vdd_list, vss_list, sup_width=2,
-                                                fill_margin=0.2, edge_margin=0.2)
-        sup_layer += 1
-        vdd_list, vss_list = self.do_power_fill(sup_layer, vdd_list, vss_list, sup_width=2,
-                                                fill_margin=0.2, edge_margin=0.2)
-
-        self.add_pin('VDD', vdd_list, show=show_pins)
-        self.add_pin('VSS', vss_list, show=show_pins)
+        # export power
+        self.add_pin('VDD', mux_inst.get_all_port_pins('VDD'), show=show_pins)
+        self.add_pin('VSS', mux_inst.get_all_port_pins('VSS'), show=show_pins)
+        for name in ('VDD_x', 'VSS_x', 'VDD_y', 'VSS_y'):
+            self.reexport(mux_inst.get_port(name), net_name=name, show=False)
 
         self._mux_params = mux_master.sch_params
