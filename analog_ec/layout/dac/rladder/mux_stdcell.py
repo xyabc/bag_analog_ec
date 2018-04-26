@@ -31,19 +31,15 @@ class PassgateRow(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             col_nbits='number of column bits.',
             config_file='Standard cell configuration file.',
@@ -91,6 +87,10 @@ class PassgateRow(StdCellBase):
         self.reexport(pg_inst.get_port('EN', col=num_col), 'en_row', show=False)
         self.reexport(pg_inst.get_port('ENB', col=num_col), 'enb_row', show=False)
 
+        # set properties
+        self._sch_params = pg_master.sch_params.copy()
+        self._sch_params['nin'] = num_col
+
 
 class InputBuffer(StdCellBase):
     """resistor ladder mux input buffers.
@@ -113,6 +113,11 @@ class InputBuffer(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._inv_params = None
+
+    @property
+    def inv_params(self):
+        return self._inv_params
 
     @classmethod
     def get_params_info(cls):
@@ -174,6 +179,8 @@ class InputBuffer(StdCellBase):
         # set template size
         self.set_std_size((inv_master.std_size[0] * num_bits, 2))
 
+        self._inv_params = inv_master.sch_params
+
 
 class RowDecoder(StdCellBase):
     """The row decoder.
@@ -196,6 +203,11 @@ class RowDecoder(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._dec_params = None
+
+    @property
+    def dec_params(self):
+        return self._dec_params
 
     @classmethod
     def get_params_info(cls):
@@ -210,7 +222,7 @@ class RowDecoder(StdCellBase):
             dictionary from parameter name to description.
         """
         return dict(
-            row_nbits='number of column bits.',
+            row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
         )
 
@@ -263,6 +275,10 @@ class RowDecoder(StdCellBase):
         # set template size
         self.set_std_size((dec_master.std_size[0], num_row))
 
+        # set properties
+        self._dec_params = dec_master.sch_params.copy()
+        self._dec_params['nin'] = row_nbits
+
 
 class ColDecoder(StdCellBase):
     """The column decoder.
@@ -285,6 +301,11 @@ class ColDecoder(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._dec_params = None
+
+    @property
+    def dec_params(self):
+        return self._dec_params
 
     @classmethod
     def get_params_info(cls):
@@ -347,6 +368,10 @@ class ColDecoder(StdCellBase):
         # set template size
         self.set_std_size((dec_master.std_size[0] * num_col, dec_master.std_size[1]))
 
+        # set properties
+        self._dec_params = dec_master.sch_params.copy()
+        self._dec_params['nin'] = col_nbits
+
 
 class RLadderMux(StdCellBase):
     """The column decoder.
@@ -369,6 +394,11 @@ class RLadderMux(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -545,6 +575,22 @@ class RLadderMux(StdCellBase):
         out = self._up_two_layers(out[0], out_tr)
         self.add_pin('out', out, show=False)
 
+        # set properties
+        self._sch_params = dict(
+            nin0=col_nbits,
+            nin1=row_nbits,
+            lch=col_master.dec_params['lch'],
+            wp=col_master.dec_params['wp'],
+            wn=col_master.dec_params['wn'],
+            thp=col_master.dec_params['thp'],
+            thn=col_master.dec_params['thn'],
+        )
+        seg_dict = col_master.dec_params['seg_dict'].copy()
+        seg_dict.update(row_master.dec_params['seg_dict'])
+        seg_dict['inv'] = buf_master.inv_params['seg']
+        seg_dict['mux'] = pgr_master.sch_params['segp']
+        self._sch_params['seg_dict'] = seg_dict
+
     def _up_two_layers(self, warr, mid_tr):
         # connect to horizontal layer
         lay_id = warr.layer_id
@@ -585,6 +631,11 @@ class RLadderMuxArray(StdCellBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         StdCellBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._mux_params = None
+
+    @property
+    def mux_params(self):
+        return self._mux_params
 
     @classmethod
     def get_params_info(cls):
@@ -655,3 +706,5 @@ class RLadderMuxArray(StdCellBase):
 
         self.add_pin('VDD', vdd_list, show=False)
         self.add_pin('VSS', vss_list, show=False)
+
+        self._mux_params = mux_master.sch_params

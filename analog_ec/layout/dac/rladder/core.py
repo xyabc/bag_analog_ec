@@ -3,12 +3,13 @@
 """This module defines the resistor ladder DAC template.
 """
 
-from typing import Dict, Set, Any, Union
+from typing import Dict, Set, Any
 
 from bag.layout.template import TemplateDB, TemplateBase
 from bag.layout.util import BBox
 
-from analog_ec.layout.passives.resistor.ladder import ResLadderTop
+from ...passives.resistor.ladder import ResLadderTop
+from .mux_stdcell import RLadderMuxArray
 
 
 class ResLadderDAC(TemplateBase):
@@ -32,6 +33,11 @@ class ResLadderDAC(TemplateBase):
     def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
 
     @classmethod
     def get_params_info(cls):
@@ -73,19 +79,20 @@ class ResLadderDAC(TemplateBase):
         nbits_tot = nin0 + nin1
 
         # make masters
-        mux_params = dict(col_nbits=col_nbits, row_nbits=row_nbits, config_file=config_file)
+        m_params = mux_params.copy()
         if num_mux_left > 0:
-            mux_params['num_mux'] = num_mux_left
-            lmux_master = self.new_template(params=mux_params, temp_cls=RLadderMuxArray)
+            m_params['num_mux'] = num_mux_left
+            lmux_master = self.new_template(params=m_params, temp_cls=RLadderMuxArray)
         else:
             lmux_master = None
 
-        mux_params['num_mux'] = num_mux_right
-        rmux_master = self.new_template(params=mux_params, temp_cls=RLadderMuxArray)
+        m_params['num_mux'] = num_mux_right
+        rmux_master = self.new_template(params=m_params, temp_cls=RLadderMuxArray)
 
-        res_params = dict(l=l, w=w, sub_lch=sub_lch, sub_w=sub_w, sub_type=sub_type, threshold=threshold,
-                          nx=num_col, ny=num_row, ndum=ndum, res_type=res_type)
-        res_master = self.new_template(params=res_params, temp_cls=ResLadderTop)
+        r_params = res_params.copy()
+        r_params['nx'] = num_col
+        r_params['ny'] = num_row
+        res_master = self.new_template(params=r_params, temp_cls=ResLadderTop)
 
         # figure out Y coordinates
         mux_warr = rmux_master.get_port('in<1>').get_pins()[0]
@@ -100,15 +107,17 @@ class ResLadderDAC(TemplateBase):
         sup_table = {'VDD': [], 'VSS': []}
         if lmux_master is not None:
             blk_w, blk_h = self.grid.get_size_dimension(lmux_master.size, unit_mode=True)
-            lmux_inst = self.add_instance(lmux_master, loc=(blk_w, mux_yo), orient='MY', unit_mode=True)
+            lmux_inst = self.add_instance(lmux_master, loc=(blk_w, mux_yo), orient='MY',
+                                          unit_mode=True)
 
             # gather supply and re-export inputs
             for port_name, port_list in sup_table.items():
                 port_list.extend(lmux_inst.get_all_port_pins(port_name))
             for mux_idx in range(num_mux_left):
-                self.reexport(lmux_inst.get_port('out<%d>' % mux_idx), show=True)
+                self.reexport(lmux_inst.get_port('out<%d>' % mux_idx), show=show_pins)
                 for bit_idx in range(nbits_tot):
-                    self.reexport(lmux_inst.get_port('code<%d>' % (bit_idx + mux_idx * nbits_tot)), show=True)
+                    self.reexport(lmux_inst.get_port('code<%d>' % (bit_idx + mux_idx * nbits_tot)),
+                                  show=show_pins)
 
             vref_left = int(round(lmux_inst.get_port('in<1>').get_pins()[0].lower / res))
             xo = blk_w
@@ -137,12 +146,12 @@ class ResLadderDAC(TemplateBase):
             port_list.extend(rmux_inst.get_all_port_pins(port_name))
         for mux_idx in range(num_mux_right):
             old_name = 'out<%d>' % mux_idx
-            new_name = 'out' if num_out == 1 else 'out<%d>' % (mux_idx + out_off)
-            self.reexport(rmux_inst.get_port(old_name), net_name=new_name, show=True)
+            new_name = 'out' if nout == 1 else 'out<%d>' % (mux_idx + out_off)
+            self.reexport(rmux_inst.get_port(old_name), net_name=new_name, show=show_pins)
             for bit_idx in range(nbits_tot):
                 old_name = 'code<%d>' % (bit_idx + mux_idx * nbits_tot)
                 new_name = 'code<%d>' % (bit_idx + mux_idx * nbits_tot + in_off)
-                self.reexport(rmux_inst.get_port(old_name), net_name=new_name, show=True)
+                self.reexport(rmux_inst.get_port(old_name), net_name=new_name, show=show_pins)
         vref_right = int(round(rmux_inst.get_port('in<1>').get_pins()[0].upper / res))
 
         for vref_idx in range(2 ** nbits_tot):
@@ -160,6 +169,15 @@ class ResLadderDAC(TemplateBase):
         # do power fill
         sup_width = 2
         vdd_list, vss_list = self.do_power_fill(top_layer, sup_table['VDD'], sup_table['VSS'],
-                                                sup_width=sup_width, fill_margin=0.5, edge_margin=0.2)
+                                                sup_width=sup_width, fill_margin=0.5,
+                                                edge_margin=0.2)
         self.add_pin('VDD', vdd_list)
         self.add_pin('VSS', vss_list)
+
+        self._sch_params = dict(
+            nin0=nin0,
+            nin1=nin1,
+            nout=nout,
+            res_params=res_master.sch_params,
+            mux_params=rmux_master.mux_params,
+        )
