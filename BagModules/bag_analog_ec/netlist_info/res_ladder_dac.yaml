@@ -1,6 +1,6 @@
 lib_name: bag_analog_ec
 cell_name: res_ladder_dac
-pins: [ "VDD", "VSS", "sel", "out" ]
+pins: [ "VDD", "VSS", "out", "code" ]
 instances:
   XMUX:
     lib_name: bag_digital_ec
@@ -8,7 +8,7 @@ instances:
     instpins:
       sel:
         direction: input
-        net_name: "sel"
+        net_name: "code"
         num_bits: 1
       VSS:
         direction: inputOutput

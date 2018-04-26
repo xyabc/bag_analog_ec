@@ -45,7 +45,8 @@ class bag_analog_ec__res_ladder_core(Module):
         if ndum < 0 or nout < 2:
             raise ValueError('Illegal values of ndum or npar')
 
-        # handle substrate pin
+        # handle pin renaming
+        self.rename_pin('out', 'out<%d:1>' % (nout - 1))
         rename = False
         if not sub_name:
             # delete substrate pin
