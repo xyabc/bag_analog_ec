@@ -82,6 +82,7 @@ class ResLadderDAC(TemplateBase):
         m_params = mux_params.copy()
         if num_mux_left > 0:
             m_params['num_mux'] = num_mux_left
+            m_params['show_pins'] = False
             lmux_master = self.new_template(params=m_params, temp_cls=RLadderMuxArray)
         else:
             lmux_master = None
@@ -92,6 +93,7 @@ class ResLadderDAC(TemplateBase):
         r_params = res_params.copy()
         r_params['nx'] = num_col
         r_params['ny'] = num_row
+        r_params['show_pins'] = False
         res_master = self.new_template(params=r_params, temp_cls=ResLadderTop)
 
         # figure out Y coordinates

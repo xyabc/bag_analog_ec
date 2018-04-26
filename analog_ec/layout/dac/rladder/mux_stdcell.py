@@ -43,12 +43,21 @@ class PassgateRow(StdCellBase):
         return dict(
             col_nbits='number of column bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
         col_nbits = self.params['col_nbits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -79,13 +88,13 @@ class PassgateRow(StdCellBase):
 
         # export passgate ports
         for idx in range(num_col):
-            self.reexport(pg_inst.get_port('D', col=idx), 'in<%d>' % idx, show=False)
-            self.reexport(pg_inst.get_port('EN', col=idx), 'en<%d>' % idx, show=False)
-            self.reexport(pg_inst.get_port('ENB', col=idx), 'enb<%d>' % idx, show=False)
+            self.reexport(pg_inst.get_port('D', col=idx), 'in<%d>' % idx, show=show_pins)
+            self.reexport(pg_inst.get_port('EN', col=idx), 'en<%d>' % idx, show=show_pins)
+            self.reexport(pg_inst.get_port('ENB', col=idx), 'enb<%d>' % idx, show=show_pins)
 
-        self.reexport(pg_inst.get_port('D', col=num_col), 'out', show=False)
-        self.reexport(pg_inst.get_port('EN', col=num_col), 'en_row', show=False)
-        self.reexport(pg_inst.get_port('ENB', col=num_col), 'enb_row', show=False)
+        self.reexport(pg_inst.get_port('D', col=num_col), 'out', show=show_pins)
+        self.reexport(pg_inst.get_port('EN', col=num_col), 'en_row', show=show_pins)
+        self.reexport(pg_inst.get_port('ENB', col=num_col), 'enb_row', show=show_pins)
 
         # set properties
         self._sch_params = pg_master.sch_params.copy()
@@ -122,24 +131,24 @@ class InputBuffer(StdCellBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             num_bits='total number of bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
         num_bits = self.params['num_bits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -168,13 +177,13 @@ class InputBuffer(StdCellBase):
 
             tr = TrackID(port_layer, tr_off + in_tr)
             in_warr = self.connect_to_tracks(bot_in_pin, tr, track_lower=0.0)
-            self.add_pin('in<%d>' % (num_bits - 1 - idx), in_warr, show=False)
+            self.add_pin('in<%d>' % (num_bits - 1 - idx), in_warr, show=show_pins)
             tr = TrackID(port_layer, tr_off + out_tr)
             out_warr = self.connect_to_tracks(top_out_pin, tr)
-            self.add_pin('out<%d>' % (num_bits - 1 - idx), out_warr, show=False)
+            self.add_pin('out<%d>' % (num_bits - 1 - idx), out_warr, show=show_pins)
             tr = TrackID(port_layer, tr_off + outb_tr)
             outb_warr = self.connect_to_tracks(bot_out_pin + top_in_pin, tr)
-            self.add_pin('outb<%d>' % (num_bits - 1 - idx), outb_warr, show=False)
+            self.add_pin('outb<%d>' % (num_bits - 1 - idx), outb_warr, show=show_pins)
 
         # set template size
         self.set_std_size((inv_master.std_size[0] * num_bits, 2))
@@ -212,24 +221,24 @@ class RowDecoder(StdCellBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
         row_nbits = self.params['row_nbits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -251,8 +260,8 @@ class RowDecoder(StdCellBase):
         for idx in range(num_row):
             inst = inst_list[idx % 2]
             ridx = idx // 2
-            self.reexport(inst.get_port('O', row=ridx), net_name='out<%d>' % idx, show=False)
-            self.reexport(inst.get_port('OB', row=ridx), net_name='outb<%d>' % idx, show=False)
+            self.reexport(inst.get_port('O', row=ridx), net_name='out<%d>' % idx, show=show_pins)
+            self.reexport(inst.get_port('OB', row=ridx), net_name='outb<%d>' % idx, show=show_pins)
             for bit_idx in range(row_nbits):
                 in_lists[bit_idx][0].append(
                     inst.get_port('IN<%d>' % bit_idx, row=ridx).get_pins()[0])
@@ -267,10 +276,10 @@ class RowDecoder(StdCellBase):
                                                 half_track=True)
             warr = self.connect_to_tracks([pin_list[idx] for idx in outb_idx_list],
                                           TrackID(in_layer, outb_tr))
-            self.add_pin('inb<%d>' % idx, warr, show=False)
+            self.add_pin('inb<%d>' % idx, warr, show=show_pins)
             warr = self.connect_to_tracks([pin_list[idx] for idx in out_idx_list],
                                           TrackID(in_layer, outb_tr + 1))
-            self.add_pin('in<%d>' % idx, warr, show=False)
+            self.add_pin('in<%d>' % idx, warr, show=show_pins)
 
         # set template size
         self.set_std_size((dec_master.std_size[0], num_row))
@@ -310,24 +319,24 @@ class ColDecoder(StdCellBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             col_nbits='number of column bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
         # type: () -> None
         col_nbits = self.params['col_nbits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -344,8 +353,8 @@ class ColDecoder(StdCellBase):
         # get input pins and export outputs
         in_lists = [([], [], []) for _ in range(col_nbits)]
         for idx in range(num_col):
-            self.reexport(inst.get_port('O', col=idx), net_name='out<%d>' % idx, show=False)
-            self.reexport(inst.get_port('OB', col=idx), net_name='outb<%d>' % idx, show=False)
+            self.reexport(inst.get_port('O', col=idx), net_name='out<%d>' % idx, show=show_pins)
+            self.reexport(inst.get_port('OB', col=idx), net_name='outb<%d>' % idx, show=show_pins)
             for bit_idx in range(col_nbits):
                 in_lists[bit_idx][0].append(
                     inst.get_port('IN<%d>' % bit_idx, col=idx).get_pins()[0])
@@ -360,10 +369,10 @@ class ColDecoder(StdCellBase):
                                                 mode=1)
             warr = self.connect_to_tracks([pin_list[idx] for idx in outb_idx_list],
                                           TrackID(in_layer, outb_tr))
-            self.add_pin('inb<%d>' % idx, warr, show=False)
+            self.add_pin('inb<%d>' % idx, warr, show=show_pins)
             warr = self.connect_to_tracks([pin_list[idx] for idx in out_idx_list],
                                           TrackID(in_layer, outb_tr + 1))
-            self.add_pin('in<%d>' % idx, warr, show=False)
+            self.add_pin('in<%d>' % idx, warr, show=show_pins)
 
         # set template size
         self.set_std_size((dec_master.std_size[0] * num_col, dec_master.std_size[1]))
@@ -403,19 +412,18 @@ class RLadderMux(StdCellBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             col_nbits='number of column bits.',
             row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
@@ -423,6 +431,7 @@ class RLadderMux(StdCellBase):
         col_nbits = self.params['col_nbits']
         row_nbits = self.params['row_nbits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -435,14 +444,14 @@ class RLadderMux(StdCellBase):
 
         tap_params = dict(cell_name='tap_pwr', config_file=config_file)
         tap_master = self.new_template(params=tap_params, temp_cls=StdCellTemplate)
-        buf_params = dict(num_bits=col_nbits + row_nbits, config_file=config_file)
+        buf_params = dict(num_bits=col_nbits + row_nbits, config_file=config_file, show_pins=False)
         buf_master = self.new_template(params=buf_params, temp_cls=InputBuffer)
-        col_params = dict(col_nbits=col_nbits, config_file=config_file)
+        col_params = dict(col_nbits=col_nbits, config_file=config_file, show_pins=False)
         col_master = self.new_template(params=col_params, temp_cls=ColDecoder)
-        row_params = dict(row_nbits=row_nbits, config_file=config_file)
+        row_params = dict(row_nbits=row_nbits, config_file=config_file, show_pins=False)
         row_master = self.new_template(params=row_params, temp_cls=RowDecoder)
         pgr_params = dict(col_nbits=col_nbits, row_nbits=row_nbits, num_space=0,
-                          config_file=config_file)
+                          config_file=config_file, show_pins=False)
         pgr_master = self.new_template(params=pgr_params, temp_cls=PassgateRow)
 
         row_offset = col_master.std_size[1]
@@ -499,7 +508,7 @@ class RLadderMux(StdCellBase):
             for inst in tap_list:
                 vlist.extend(inst.get_all_port_pins(key))
             warr_list = self.connect_wires(vlist)
-            self.add_pin(key, warr_list, show=False)
+            self.add_pin(key, warr_list, show=show_pins)
 
         # export code inputs
         for idx in range(col_nbits + row_nbits):
@@ -507,7 +516,7 @@ class RLadderMux(StdCellBase):
             mid_tr = self.grid.find_next_track(code_warr.layer_id + 1, code_warr.lower,
                                                half_track=True)
             code_warr = self._up_two_layers(code_warr, mid_tr)
-            self.add_pin('code<%d>' % idx, code_warr, show=False)
+            self.add_pin('code<%d>' % idx, code_warr, show=show_pins)
 
         # connect buffers to column decoder
         max_col_tid = -1
@@ -556,7 +565,7 @@ class RLadderMux(StdCellBase):
                 vin_warr = self.connect_to_tracks(vin_pin, vin_tid, track_lower=0,
                                                   track_upper=self.array_box.right_unit,
                                                   unit_mode=True)
-                self.add_pin('in<%d>' % (cidx + idx * num_col), vin_warr, show=False)
+                self.add_pin('in<%d>' % (cidx + idx * num_col), vin_warr, show=show_pins)
 
         # connect column decoder and passgates
         for idx in range(num_col):
@@ -573,7 +582,7 @@ class RLadderMux(StdCellBase):
         # connect to horizontal layer
         out_tr = top_in_tr + 2
         out = self._up_two_layers(out[0], out_tr)
-        self.add_pin('out', out, show=False)
+        self.add_pin('out', out, show=show_pins)
 
         # set properties
         self._sch_params = dict(
@@ -640,20 +649,19 @@ class RLadderMuxArray(StdCellBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        """Returns a dictionary containing parameter descriptions.
-
-        Override this method to return a dictionary from parameter names to descriptions.
-
-        Returns
-        -------
-        param_info : Dict[str, str]
-            dictionary from parameter name to description.
-        """
         return dict(
             num_mux='number of muxes.',
             col_nbits='number of column bits.',
             row_nbits='number of row bits.',
             config_file='Standard cell configuration file.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            show_pins=True,
         )
 
     def draw_layout(self):
@@ -662,6 +670,7 @@ class RLadderMuxArray(StdCellBase):
         col_nbits = self.params['col_nbits']
         row_nbits = self.params['row_nbits']
         config_file = self.params['config_file']
+        show_pins = self.params['show_pins']
 
         # use standard cell routing grid
         self.update_routing_grid()
@@ -669,7 +678,8 @@ class RLadderMuxArray(StdCellBase):
         self.set_draw_boundaries(True)
 
         # place muxes
-        mux_params = dict(col_nbits=col_nbits, row_nbits=row_nbits, config_file=config_file)
+        mux_params = dict(col_nbits=col_nbits, row_nbits=row_nbits, config_file=config_file,
+                          show_pins=False)
         mux_master = self.new_template(params=mux_params, temp_cls=RLadderMux)
         mux_ncol, mux_nrow = mux_master.std_size
         mux_inst = self.add_std_instance(mux_master, nx=num_mux, spx=mux_ncol)
@@ -684,15 +694,17 @@ class RLadderMuxArray(StdCellBase):
         for idx in range(2 ** nbits_tot):
             name = 'in<%d>' % idx
             warrs = self.connect_wires(mux_inst.get_all_port_pins(name), lower=0.0)
-            self.add_pin(name, warrs, show=False)
+            self.add_pin(name, warrs, show=show_pins)
 
         # export outputs/code
         for idx in range(num_mux):
-            self.reexport(mux_inst.get_port('out', col=idx), net_name='out<%d>' % idx, show=False)
+            self.reexport(mux_inst.get_port('out', col=idx), net_name='out<%d>' % idx,
+                          show=show_pins)
             for bit_idx in range(nbits_tot):
                 old_name = 'code<%d>' % bit_idx
                 new_name = 'code<%d>' % (bit_idx + nbits_tot * idx)
-                self.reexport(mux_inst.get_port(old_name, col=idx), net_name=new_name, show=False)
+                self.reexport(mux_inst.get_port(old_name, col=idx), net_name=new_name,
+                              show=show_pins)
 
         # connect power and do fill
         vdd_list = mux_inst.get_all_port_pins('VDD')
@@ -704,7 +716,7 @@ class RLadderMuxArray(StdCellBase):
         vdd_list, vss_list = self.do_power_fill(sup_layer, vdd_list, vss_list, sup_width=2,
                                                 fill_margin=0.2, edge_margin=0.2)
 
-        self.add_pin('VDD', vdd_list, show=False)
-        self.add_pin('VSS', vss_list, show=False)
+        self.add_pin('VDD', vdd_list, show=show_pins)
+        self.add_pin('VSS', vss_list, show=show_pins)
 
         self._mux_params = mux_master.sch_params
