@@ -80,9 +80,11 @@ class ResLadderDAC(TemplateBase):
 
         # make masters
         m_params = mux_params.copy()
+        m_params['col_nbits'] = nin0
+        m_params['row_nbits'] = nin1
+        m_params['show_pins'] = False
         if num_mux_left > 0:
             m_params['num_mux'] = num_mux_left
-            m_params['show_pins'] = False
             lmux_master = self.new_template(params=m_params, temp_cls=RLadderMuxArray)
         else:
             lmux_master = None

@@ -596,7 +596,7 @@ class RLadderMux(StdCellBase):
         )
         seg_dict = col_master.dec_params['seg_dict'].copy()
         seg_dict.update(row_master.dec_params['seg_dict'])
-        seg_dict['inv'] = buf_master.inv_params['seg']
+        seg_dict['inv'] = buf_master.inv_params['segp']
         seg_dict['mux'] = pgr_master.sch_params['segp']
         self._sch_params['seg_dict'] = seg_dict
 
