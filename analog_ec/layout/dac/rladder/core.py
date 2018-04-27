@@ -47,6 +47,7 @@ class ResLadderDAC(TemplateBase):
             nin1='number of select bits for mux level 1.',
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
+            fill_config='Fill configuration dictionary.',
             nout='number of outputs.',
             top_layer='top layer ID.',
             show_pins='True to show pins.',
@@ -63,16 +64,11 @@ class ResLadderDAC(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
-        fill_config = {
-            5: (2, 1, 200, 200),
-            6: (2, 1, 200, 200),
-            7: (2, 1, 200, 200),
-        }
-
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
         res_params = self.params['res_params']
         mux_params = self.params['mux_params']
+        fill_config = self.params['fill_config']
         nout = self.params['nout']
         top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
