@@ -5,9 +5,9 @@
 
 from typing import Dict, Set, Any
 
+from bag.layout.routing import TrackID
 from bag.layout.template import TemplateDB
 from bag.layout.digital import StdCellTemplate, StdCellBase
-from bag.layout.routing import TrackID
 
 
 class PassgateRow(StdCellBase):
@@ -506,6 +506,8 @@ class RLadderMux(StdCellBase):
         for inst in tap_list:
             vdd_list.extend(inst.port_pins_iter('VDD'))
             vss_list.extend(inst.port_pins_iter('VSS'))
+        vdd_list = self.connect_wires(vdd_list)
+        vss_list = self.connect_wires(vss_list)
         sup_layer = vdd_list[0].layer_id
 
         if top_layer is None:
@@ -513,7 +515,6 @@ class RLadderMux(StdCellBase):
         self.set_std_size((nx_size, ny_size), top_layer=top_layer)
         # fill unused spaces
         self.fill_space()
-        top_layer = self.top_layer
 
         # export code inputs
         for idx in range(col_nbits + row_nbits):
@@ -589,15 +590,7 @@ class RLadderMux(StdCellBase):
         out = self._up_two_layers(out[0], out_tr)
         self.add_pin('out', out, show=show_pins)
 
-        # draw power fill and export supplies
-        for next_layer in range(sup_layer + 1, top_layer + 1):
-            vdd_list, vss_list = self.do_power_fill(next_layer, vdd_list, vss_list, sup_width=2,
-                                                    fill_margin=100, edge_margin=0, unit_mode=True)
-            if top_layer - 1 <= next_layer <= top_layer:
-                suf = '_x' if self.grid.get_direction(next_layer) == 'x' else '_y'
-                self.add_pin('VDD' + suf, vdd_list, label='VDD', show=False)
-                self.add_pin('VSS' + suf, vss_list, label='VSS', show=False)
-
+        # export supplies
         self.add_pin('VDD', vdd_list, show=show_pins)
         self.add_pin('VSS', vss_list, show=show_pins)
 
@@ -728,9 +721,15 @@ class RLadderMuxArray(StdCellBase):
                               show=show_pins)
 
         # export power
-        self.add_pin('VDD', mux_inst.get_all_port_pins('VDD'), show=show_pins)
-        self.add_pin('VSS', mux_inst.get_all_port_pins('VSS'), show=show_pins)
-        for name in ('VDD_x', 'VSS_x', 'VDD_y', 'VSS_y'):
-            self.reexport(mux_inst.get_port(name), net_name=name, show=False)
+        vdd_list = mux_inst.get_all_port_pins('VDD')
+        vss_list = mux_inst.get_all_port_pins('VSS')
+        sup_layer = vdd_list[0].layer_id
+        # draw power fill and export supplies
+        for next_layer in range(sup_layer + 1, top_layer + 1):
+            vdd_list, vss_list = self.do_power_fill(next_layer, 200, 200, vdd_list, vss_list,
+                                                    fill_width=2, fill_space=1, x_margin=100,
+                                                    y_margin=100, unit_mode=True)
 
+        self.add_pin('VDD', vdd_list, show=show_pins)
+        self.add_pin('VSS', vss_list, show=show_pins)
         self._mux_params = mux_master.sch_params

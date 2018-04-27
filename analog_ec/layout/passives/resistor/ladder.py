@@ -363,7 +363,7 @@ class ResLadderCore(ResArrayBase):
             tr_off = self.get_track_offsets(row, 0)[2]
             for tidx in range(nx):
                 warr = self.add_wires(xm_layer, tr_off + xm_bot_idx + tidx, lower=xm_lower,
-                                      upper=xm_upper, fill_type='VSS', unit_mode=True)
+                                      upper=xm_upper, unit_mode=True)
                 if row < ndum or (row == ndum and tidx == 0):
                     net_name = 'VSS'
                 elif row >= ny + ndum:
@@ -465,20 +465,15 @@ class ResLadderTop(TemplateBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        ans = ResLadder.get_params_info()
-        ans['top_layer'] = 'top layer ID.'
-        return ans
+        return ResLadder.get_params_info()
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
-        ans = ResLadder.get_default_param_values()
-        ans['top_layer'] = None
-        return ans
+        return ResLadder.get_default_param_values()
 
     def draw_layout(self):
         # type: () -> None
-        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
         params = self.params.copy()
@@ -492,10 +487,9 @@ class ResLadderTop(TemplateBase):
                 sup_table[name].extend(inst.port_pins_iter(name))
             else:
                 self.reexport(inst.get_port(name), show=show_pins)
-        sup_layer = sup_table['VSS'][0].layer_id
 
-        if top_layer is None:
-            top_layer = sup_layer + 2
+        sup_layer = sup_table['VSS'][0].layer_id
+        top_layer = sup_layer + 1
         self.set_size_from_bound_box(top_layer, master.bound_box)
         self.array_box = master.array_box
         self._sch_params = master.sch_params
@@ -513,18 +507,9 @@ class ResLadderTop(TemplateBase):
 
         # draw power fill and export supplies
         vdd_list, vss_list = sup_table['VDD'], sup_table['VSS']
-        for next_layer in range(sup_layer + 1, top_layer + 1):
-            vdd_list, vss_list = self.do_power_fill(next_layer, vdd_list, vss_list,
-                                                    sup_width=sup_width, fill_margin=500,
-                                                    edge_margin=edge_margin,
-                                                    sup_spacing=sup_spacing,
-                                                    unit_mode=True)
-            if top_layer - 1 <= next_layer <= top_layer:
-                suf = '_x' if self.grid.get_direction(next_layer) == 'x' else '_y'
-                self.add_pin('VDD' + suf, vdd_list, label='VDD', show=False)
-                self.add_pin('VSS' + suf, vss_list, label='VSS', show=False)
-            sup_width = 2
-            sup_spacing = -1
-
+        vdd_list, vss_list = self.do_power_fill(top_layer, 200, 200, vdd_warrs=vdd_list,
+                                                vss_warrs=vss_list, fill_width=sup_width,
+                                                fill_space=sup_spacing, x_margin=edge_margin,
+                                                y_margin=edge_margin, unit_mode=True)
         self.add_pin('VDD', vdd_list, show=show_pins)
         self.add_pin('VSS', vss_list, show=show_pins)
