@@ -4,11 +4,14 @@
 """This module defines an array of resistor ladder DACs.
 """
 
-from typing import Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any
 
-from bag.layout.template import TemplateDB, TemplateBase
+from bag.layout.template import TemplateBase
 
 from .core import ResLadderDAC
+
+if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
 
 
 class RDACRow(TemplateBase):

@@ -3,13 +3,18 @@
 """This module defines the resistor ladder DAC template.
 """
 
-from typing import Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any
 
-from bag.layout.template import TemplateDB, TemplateBase
+from bag.layout.template import TemplateBase
 from bag.layout.util import BBox
+
+from abs_templates_ec.routing.fill import PowerFill
 
 from ...passives.resistor.ladder import ResLadderTop
 from .mux_stdcell import RLadderMuxArray
+
+if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
 
 
 class ResLadderDAC(TemplateBase):
@@ -175,23 +180,34 @@ class ResLadderDAC(TemplateBase):
         # set size
         yo = max(mux_yo + rmux_h, res_yo + res_h)
         blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
-        bnd_box = BBox(0, 0, -(-xo // blk_w) * blk_w, -(-yo // blk_h) * blk_h, res, unit_mode=True)
+        nfill_x = -(-xo // blk_w)  # type: int
+        nfill_y = -(-yo // blk_h)
+        bnd_box = BBox(0, 0, nfill_x * blk_w, nfill_y * blk_h, res, unit_mode=True)
         self.set_size_from_bound_box(top_layer, bnd_box)
         self.array_box = bnd_box
         self.add_cell_boundary(bnd_box)
 
         # connect supplies
+        sup_layer = res_master.top_layer + 1
         vdd_list = sup_table['VDD']
         vss_list = sup_table['VSS']
-        for next_layer in range(res_master.top_layer + 1, top_layer + 1):
-            fill_width, fill_space, space, space_le = fill_config[next_layer]
-            vdd_list, vss_list = self.do_power_fill(next_layer, space, space_le,
-                                                    vdd_warrs=vdd_list, vss_warrs=vss_list,
-                                                    fill_width=fill_width, fill_space=fill_space,
-                                                    unit_mode=True)
-
-        self.add_pin('VDD', sup_table['VDD'], show=show_pins)
-        self.add_pin('VSS', sup_table['VSS'], show=show_pins)
+        fill_width, fill_space, space, space_le = fill_config[sup_layer]
+        self.do_power_fill(sup_layer, space, space_le, vdd_warrs=vdd_list, vss_warrs=vss_list,
+                           fill_width=fill_width, fill_space=fill_space, unit_mode=True)
+        # add fill cells
+        fill_params = dict(
+            fill_config=fill_config,
+            bot_layer=sup_layer,
+            top_layer=top_layer,
+            show_pins=False,
+        )
+        fill_master = self.new_template(params=fill_params, temp_cls=PowerFill)
+        fill_inst = self.add_instance(fill_master, 'XFILL', loc=(0, 0), nx=nfill_x, ny=nfill_y,
+                                      spx=blk_w, spy=blk_h, unit_mode=True)
+        vdd_list = fill_inst.get_all_port_pins('VDD')
+        vss_list = fill_inst.get_all_port_pins('VSS')
+        self.add_pin('VDD', self.connect_wires(vdd_list), show=show_pins)
+        self.add_pin('VSS', self.connect_wires(vss_list), show=show_pins)
 
         res_sch_params = res_master.sch_params.copy()
         mux_sch_params = rmux_master.mux_params.copy()
