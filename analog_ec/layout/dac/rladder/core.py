@@ -48,6 +48,7 @@ class ResLadderDAC(TemplateBase):
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
             nout='number of outputs.',
+            top_layer='top layer ID.',
             lr_end_mode='left/right end mode flag.',
             show_pins='True to show pins.',
         )
@@ -57,6 +58,7 @@ class ResLadderDAC(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             nout=1,
+            top_layer=None,
             lr_end_mode=3,
             show_pins=True,
         )
@@ -68,6 +70,7 @@ class ResLadderDAC(TemplateBase):
         res_params = self.params['res_params']
         mux_params = self.params['mux_params']
         nout = self.params['nout']
+        top_layer = self.params['top_layer']
         lr_end_mode = self.params['lr_end_mode']
         show_pins = self.params['show_pins']
 
@@ -85,6 +88,7 @@ class ResLadderDAC(TemplateBase):
         m_params = mux_params.copy()
         m_params['col_nbits'] = nin0
         m_params['row_nbits'] = nin1
+        m_params['top_layer'] = top_layer
         m_params['show_pins'] = False
         if num_mux_left > 0:
             m_params['num_mux'] = num_mux_left
@@ -94,10 +98,13 @@ class ResLadderDAC(TemplateBase):
 
         m_params['num_mux'] = num_mux_right
         rmux_master = self.new_template(params=m_params, temp_cls=RLadderMuxArray)
+        if top_layer is None:
+            top_layer = rmux_master.top_layer
 
         r_params = res_params.copy()
         r_params['nx'] = num_col
         r_params['ny'] = num_row
+        r_params['top_layer'] = top_layer
         r_params['show_pins'] = False
         res_master = self.new_template(params=r_params, temp_cls=ResLadderTop)
 
@@ -111,7 +118,7 @@ class ResLadderDAC(TemplateBase):
         mux_yo = int(round(max(res_tr - mux_tr, 0))) * tr_pitch
 
         # place left mux
-        sup_table = {'VDD': [], 'VSS': []}
+        sup_table = {'VDD': [], 'VSS': [], 'VDD_x': [], 'VSS_x': [], 'VDD_y': [], 'VSS_y': []}
         if lmux_master is not None:
             blk_w, blk_h = self.grid.get_size_dimension(lmux_master.size, unit_mode=True)
             lmux_inst = self.add_instance(lmux_master, loc=(blk_w, mux_yo), orient='MY',
@@ -119,7 +126,7 @@ class ResLadderDAC(TemplateBase):
 
             # gather supply and re-export inputs
             for port_name, port_list in sup_table.items():
-                port_list.extend(lmux_inst.get_all_port_pins(port_name))
+                port_list.extend(lmux_inst.port_pins_iter(port_name))
             for mux_idx in range(num_mux_left):
                 self.reexport(lmux_inst.get_port('out<%d>' % mux_idx), show=show_pins)
                 for bit_idx in range(nbits_tot):
@@ -137,7 +144,7 @@ class ResLadderDAC(TemplateBase):
         # place resistor ladder
         res_inst = self.add_instance(res_master, loc=(xo, res_yo), unit_mode=True)
         for port_name, port_list in sup_table.items():
-            port_list.extend(res_inst.get_all_port_pins(port_name))
+            port_list.extend(res_inst.port_pins_iter(port_name))
         if vref_left < 0:
             vref_left = int(round(res_inst.get_port('out<1>').get_pins()[0].lower / res))
 
@@ -150,7 +157,7 @@ class ResLadderDAC(TemplateBase):
         out_off = num_mux_left
         in_off = num_mux_left * nbits_tot
         for port_name, port_list in sup_table.items():
-            port_list.extend(rmux_inst.get_all_port_pins(port_name))
+            port_list.extend(rmux_inst.port_pins_iter(port_name))
         for mux_idx in range(num_mux_right):
             old_name = 'out<%d>' % mux_idx
             new_name = 'out' if nout == 1 else 'out<%d>' % (mux_idx + out_off)
@@ -169,18 +176,19 @@ class ResLadderDAC(TemplateBase):
 
         # set size
         yo = max(mux_yo + rmux_h, res_yo + res_h)
-        top_layer = sup_table['VDD'][0].layer_id + 1
         self.size = self.grid.get_size_tuple(top_layer, xo, yo, round_up=True, unit_mode=True)
         self.array_box = self.bound_box
         self.add_cell_boundary(self.bound_box)
 
-        # do power fill
-        sup_width = 2
-        vdd_list, vss_list = self.do_power_fill(top_layer, sup_table['VDD'], sup_table['VSS'],
-                                                sup_width=sup_width, fill_margin=0.5,
-                                                edge_margin=0.2)
-        self.add_pin('VDD', vdd_list)
-        self.add_pin('VSS', vss_list)
+        # connect supplies
+        # vdd_x = self.connect_wires(sup_table['VDD_x'])
+        # vss_x = self.connect_wires(sup_table['VSS_x'])
+        self.add_pin('VDD', sup_table['VDD'], show=show_pins)
+        self.add_pin('VSS', sup_table['VSS'], show=show_pins)
+        # self.add_pin('VDD_x', vdd_x, show=False)
+        # self.add_pin('VSS_x', vss_x, show=False)
+        self.add_pin('VDD_y', sup_table['VDD_y'], show=False)
+        self.add_pin('VSS_y', sup_table['VSS_y'], show=False)
 
         res_sch_params = res_master.sch_params.copy()
         mux_sch_params = rmux_master.mux_params.copy()

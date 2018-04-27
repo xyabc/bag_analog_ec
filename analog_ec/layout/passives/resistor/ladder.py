@@ -465,24 +465,26 @@ class ResLadderTop(TemplateBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        return ResLadder.get_params_info()
+        ans = ResLadder.get_params_info()
+        ans['top_layer'] = 'top layer ID.'
+        return ans
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
-        return ResLadder.get_default_param_values()
+        ans = ResLadder.get_default_param_values()
+        ans['top_layer'] = None
+        return ans
 
     def draw_layout(self):
         # type: () -> None
+        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
         params = self.params.copy()
         params['show_pins'] = False
         master = self.new_template(params=params, temp_cls=ResLadder)
         inst = self.add_instance(master, 'XLADDER')
-        self.set_size_from_bound_box(master.top_layer, master.bound_box)
-        self.array_box = master.array_box
-        self._sch_params = master.sch_params
 
         sup_table = {'VDD': [], 'VSS': []}
         for name in inst.port_names_iter():
@@ -490,11 +492,17 @@ class ResLadderTop(TemplateBase):
                 sup_table[name].extend(inst.port_pins_iter(name))
             else:
                 self.reexport(inst.get_port(name), show=show_pins)
+        sup_layer = sup_table['VSS'][0].layer_id
 
-        vdd_warrs, vss_warrs = sup_table['VDD'], sup_table['VSS']
-        sup_layer = vdd_warrs[0].layer_id + 1
+        if top_layer is None:
+            top_layer = sup_layer + 2
+        self.set_size_from_bound_box(top_layer, master.bound_box)
+        self.array_box = master.array_box
+        self._sch_params = master.sch_params
+
         # get power fill width and spacing
         sup_width = 1
+        edge_margin = 200
         sup_spacing = self.grid.get_num_space_tracks(sup_layer, sup_width)
         num_sup_tracks = master.num_tracks[-1]
         # make sure every resistor sees the same power fill
@@ -503,9 +511,20 @@ class ResLadderTop(TemplateBase):
         while num_sup_tracks % (sup_width + sup_spacing) != 0:
             sup_spacing += 1
 
-        vdd_warrs, vss_warrs = self.do_power_fill(sup_layer, vdd_warrs, vss_warrs,
-                                                  sup_width=sup_width,
-                                                  fill_margin=0.5, edge_margin=0.2,
-                                                  sup_spacing=sup_spacing)
-        self.add_pin('VDD', vdd_warrs, show=show_pins)
-        self.add_pin('VSS', vss_warrs, show=show_pins)
+        # draw power fill and export supplies
+        vdd_list, vss_list = sup_table['VDD'], sup_table['VSS']
+        for next_layer in range(sup_layer + 1, top_layer + 1):
+            vdd_list, vss_list = self.do_power_fill(next_layer, vdd_list, vss_list,
+                                                    sup_width=sup_width, fill_margin=500,
+                                                    edge_margin=edge_margin,
+                                                    sup_spacing=sup_spacing,
+                                                    unit_mode=True)
+            if top_layer - 1 <= next_layer <= top_layer:
+                suf = '_x' if self.grid.get_direction(next_layer) == 'x' else '_y'
+                self.add_pin('VDD' + suf, vdd_list, label='VDD', show=False)
+                self.add_pin('VSS' + suf, vss_list, label='VSS', show=False)
+            sup_width = 2
+            sup_spacing = -1
+
+        self.add_pin('VDD', vdd_list, show=show_pins)
+        self.add_pin('VSS', vss_list, show=show_pins)
