@@ -20,4 +20,4 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    bprj.generate_cell(block_specs, RLadderMuxArray)
+    stats = bprj.generate_cell(block_specs, RLadderMuxArray, debug=True, profile_fname='new.data')
