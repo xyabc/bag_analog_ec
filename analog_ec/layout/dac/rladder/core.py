@@ -63,10 +63,11 @@ class ResLadderDAC(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
-        space = 200
-        space_le = 200
-        fill_width = 2
-        fill_space = 1
+        fill_config = {
+            5: (2, 1, 200, 200),
+            6: (2, 1, 200, 200),
+            7: (2, 1, 200, 200),
+        }
 
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
@@ -177,14 +178,17 @@ class ResLadderDAC(TemplateBase):
 
         # set size
         yo = max(mux_yo + rmux_h, res_yo + res_h)
-        self.size = self.grid.get_size_tuple(top_layer, xo, yo, round_up=True, unit_mode=True)
-        self.array_box = self.bound_box
-        self.add_cell_boundary(self.bound_box)
+        blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
+        bnd_box = BBox(0, 0, -(-xo // blk_w) * blk_w, -(-yo // blk_h) * blk_h, res, unit_mode=True)
+        self.set_size_from_bound_box(top_layer, bnd_box)
+        self.array_box = bnd_box
+        self.add_cell_boundary(bnd_box)
 
         # connect supplies
         vdd_list = sup_table['VDD']
         vss_list = sup_table['VSS']
         for next_layer in range(res_master.top_layer + 1, top_layer + 1):
+            fill_width, fill_space, space, space_le = fill_config[next_layer]
             vdd_list, vss_list = self.do_power_fill(next_layer, space, space_le,
                                                     vdd_warrs=vdd_list, vss_warrs=vss_list,
                                                     fill_width=fill_width, fill_space=fill_space,
