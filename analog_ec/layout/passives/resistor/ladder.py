@@ -397,12 +397,18 @@ class ResLadder(SubstrateWrapper):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._num_tracks = None  # type: Tuple[int, ...]
+        self._core_offset = None  # type: Tuple[int, int]
 
     @property
     def num_tracks(self):
         # type: () -> Tuple[int, ...]
         """Returns the number of tracks per resistor block on each routing layer."""
         return self._num_tracks
+
+    @property
+    def core_offset(self):
+        # type: () -> Tuple[int, int]
+        return self._core_offset
 
     @classmethod
     def get_params_info(cls):
@@ -433,6 +439,7 @@ class ResLadder(SubstrateWrapper):
         inst = self.draw_layout_helper(ResLadderCore, res_params, sub_lch, sub_w, sub_tr_w,
                                        sub_type, threshold, show_pins, is_passive=True)
         self._num_tracks = inst.master.num_tracks
+        self._core_offset = inst.master.core_offset
 
 
 class ResLadderTop(TemplateBase):
@@ -505,11 +512,12 @@ class ResLadderTop(TemplateBase):
         while num_sup_tracks % (sup_width + sup_spacing) != 0:
             sup_spacing += 1
 
+        x0 = master.core_offset[0]
         # draw power fill and export supplies
         vdd_list, vss_list = sup_table['VDD'], sup_table['VSS']
         vdd_list, vss_list = self.do_power_fill(top_layer, 200, 200, vdd_warrs=vdd_list,
                                                 vss_warrs=vss_list, fill_width=sup_width,
                                                 fill_space=sup_spacing, x_margin=edge_margin,
-                                                y_margin=edge_margin, unit_mode=True)
+                                                y_margin=edge_margin, tr_offset=x0, unit_mode=True)
         self.add_pin('VDD', vdd_list, show=show_pins)
         self.add_pin('VSS', vss_list, show=show_pins)
