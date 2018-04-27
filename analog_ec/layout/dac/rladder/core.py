@@ -63,6 +63,11 @@ class ResLadderDAC(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
+        space = 200
+        space_le = 200
+        fill_width = 2
+        fill_space = 1
+
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
         res_params = self.params['res_params']
@@ -177,6 +182,14 @@ class ResLadderDAC(TemplateBase):
         self.add_cell_boundary(self.bound_box)
 
         # connect supplies
+        vdd_list = sup_table['VDD']
+        vss_list = sup_table['VSS']
+        for next_layer in range(res_master.top_layer + 1, top_layer + 1):
+            vdd_list, vss_list = self.do_power_fill(next_layer, space, space_le,
+                                                    vdd_warrs=vdd_list, vss_warrs=vss_list,
+                                                    fill_width=fill_width, fill_space=fill_space,
+                                                    unit_mode=True)
+
         self.add_pin('VDD', sup_table['VDD'], show=show_pins)
         self.add_pin('VSS', sup_table['VSS'], show=show_pins)
 
