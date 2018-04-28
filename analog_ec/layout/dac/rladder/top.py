@@ -87,13 +87,16 @@ class RDACRow(TemplateBase):
         self.array_box = bnd_box
 
         # connect inputs
-        self.connect_inputs(inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
-                            fill_config, show_pins)
+        self.connect_io(inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
+                        fill_config, show_pins)
 
-        self._sch_params = master.sch_params.copy()
+        self._sch_params = dict(
+            dac_params=master.sch_params,
+            ndac=ndac,
+        )
 
-    def connect_inputs(self, inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
-                       fill_config, show_pins):
+    def connect_io(self, inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
+                   fill_config, show_pins):
         # export inputs
         cnt = 1
         ndac = inst.nx
@@ -103,6 +106,13 @@ class RDACRow(TemplateBase):
         for col_idx in range(ndac):
             pin_off = 0
             for out_idx in range(nout):
+                # export output
+                if nout == 1:
+                    out_pin = inst.get_pin('out', col=col_idx)
+                else:
+                    out_pin = inst.get_pin('out<%d>' % out_idx, col=col_idx)
+                self.add_pin('out<%d>' % (out_idx + col_idx * nout), out_pin, show=show_pins)
+                # connect inputs
                 warrs = [inst.get_pin(fmt % (pin_off + in_idx), col=col_idx)
                          for in_idx in range(nin)]
                 tr_idx_list = list(range(cnt, cnt + nin))
@@ -126,5 +136,8 @@ class RDACRow(TemplateBase):
         self.connect_to_track_wires(vss_warrs, sh_warr)
         params = dict(fill_config=fill_config, bot_layer=in_layer + 2, show_pins=False)
         fill_master = self.new_template(params=params, temp_cls=PowerFill)
-        self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
-                          spx=blk_w, spy=blk_h, unit_mode=True)
+        inst = self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
+                                 spx=blk_w, spy=blk_h, unit_mode=True)
+
+        self.reexport(inst.get_port('VDD', row=0, col=0), show=show_pins)
+        self.reexport(inst.get_port('VSS', row=0, col=0), show=show_pins)
