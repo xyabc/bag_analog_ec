@@ -1,0 +1,40 @@
+lib_name: bag_analog_ec
+cell_name: res_ladder_dac_array
+pins: [ "VDD", "VSS", "out", "code" ]
+instances:
+  XDAC:
+    lib_name: bag_analog_ec
+    cell_name: res_ladder_dac
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      VDD:
+        direction: inputOutput
+        net_name: "VDD"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "out"
+        num_bits: 1
+      code:
+        direction: input
+        net_name: "code"
+        num_bits: 1
+  PIN1:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}

@@ -99,6 +99,7 @@ class RDACRow(TemplateBase):
                    fill_config, show_pins):
         # export inputs
         cnt = 1
+        pin_cnt = 0
         ndac = inst.nx
         ngrp = nout * ndac
         fmt = 'code<%d>'
@@ -118,11 +119,12 @@ class RDACRow(TemplateBase):
                 tr_idx_list = list(range(cnt, cnt + nin))
                 warrs = self.connect_matching_tracks(warrs, in_layer, tr_idx_list, unit_mode=True)
                 for idx, w in enumerate(warrs):
-                    self.add_pin(fmt % (cnt + idx), w, show=show_pins)
+                    self.add_pin(fmt % (pin_cnt + idx), w, show=show_pins)
                     lower = min(lower, w.lower_unit)
                     upper = max(upper, w.upper_unit)
                 cnt += nin + 1
                 pin_off += nin
+                pin_cnt += nin
 
         # add shield wires
         sh_warr = self.add_wires(in_layer, 0, lower, upper, num=ngrp + 1, pitch=nin + 1,
@@ -133,7 +135,7 @@ class RDACRow(TemplateBase):
                                                in_layer + 1, in_layer + 2)
         vss_warrs = [pin for inst in inst_list2[0] for pin in inst.port_pins_iter('VSS_b')]
         vss_warrs = self.connect_wires(vss_warrs)
-        self.connect_to_track_wires(vss_warrs, sh_warr)
+        self.draw_vias_on_intersections(sh_warr, vss_warrs)
         params = dict(fill_config=fill_config, bot_layer=in_layer + 2, show_pins=False)
         fill_master = self.new_template(params=params, temp_cls=PowerFill)
         inst = self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
