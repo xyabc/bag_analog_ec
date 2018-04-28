@@ -116,6 +116,6 @@ class RDACRow(TemplateBase):
         sh_warr = self.add_wires(in_layer, 0, lower, upper, num=ngrp + 1, pitch=nin + 1,
                                  unit_mode=True)
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
-        fw, fsp, sp, sp_le = fill_config[in_layer + 1]
-        self.do_power_fill(in_layer + 1, sp, sp_le, vss_warrs=sh_warr, bound_box=bnd_box,
-                           fill_width=fw, fill_space=fsp, unit_mode=True)
+
+        inst_list_list = PowerFill.add_fill_blocks(self, bnd_box, fill_config,
+                                                   in_layer + 1, in_layer + 2)
