@@ -87,11 +87,13 @@ class RDACRow(TemplateBase):
         self.array_box = bnd_box
 
         # connect inputs
-        self.connect_inputs(inst, in_layer, nin, nout, ny_input, blk_h, fill_config, show_pins)
+        self.connect_inputs(inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
+                            fill_config, show_pins)
 
         self._sch_params = master.sch_params.copy()
 
-    def connect_inputs(self, inst, in_layer, nin, nout, ny_input, blk_h, fill_config, show_pins):
+    def connect_inputs(self, inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
+                       fill_config, show_pins):
         # export inputs
         cnt = 1
         ndac = inst.nx
@@ -116,6 +118,13 @@ class RDACRow(TemplateBase):
         sh_warr = self.add_wires(in_layer, 0, lower, upper, num=ngrp + 1, pitch=nin + 1,
                                  unit_mode=True)
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
-
-        inst_list_list = PowerFill.add_fill_blocks(self, bnd_box, fill_config,
-                                                   in_layer + 1, in_layer + 2)
+        nx_input = bnd_box.width_unit // blk_w
+        inst_list2 = PowerFill.add_fill_blocks(self, bnd_box, fill_config,
+                                               in_layer + 1, in_layer + 2)
+        vss_warrs = [pin for inst in inst_list2[0] for pin in inst.port_pins_iter('VSS_b')]
+        vss_warrs = self.connect_wires(vss_warrs)
+        self.connect_to_track_wires(vss_warrs, sh_warr)
+        params = dict(fill_config=fill_config, bot_layer=in_layer + 2, show_pins=False)
+        fill_master = self.new_template(params=params, temp_cls=PowerFill)
+        self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
+                          spx=blk_w, spy=blk_h, unit_mode=True)
