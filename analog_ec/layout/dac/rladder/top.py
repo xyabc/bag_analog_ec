@@ -71,6 +71,8 @@ class RDACRow(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
+        in_tr0 = 1
+
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
         nout_list = self.params['nout_list']
@@ -120,7 +122,7 @@ class RDACRow(TemplateBase):
 
         # compute space required for input bus
         nin = nin0 + nin1
-        ntot = nin * nout_tot + nout_tot + 1
+        ntot = nin * nout_tot + nout_tot + 1 + in_tr0
         in_pitch = self.grid.get_track_pitch(io_layer, unit_mode=True)
         blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
         ny_input = (-(-(ntot * in_pitch) // blk_h) + 1)
@@ -150,8 +152,9 @@ class RDACRow(TemplateBase):
         self.array_box = bnd_box
 
         # connect inputs, gather outputs, and draw fill
-        out_pins, fm = self._connect_input(inst_list, io_layer, nin, nout_tot, nout_arr_list,
-                                           ny_input, blk_w, blk_h, fill_config, out_y0)
+        out_pins, fm = self._connect_input(inst_list, io_layer, in_tr0, nin, nout_tot,
+                                           nout_arr_list, ny_input, blk_w, blk_h,
+                                           fill_config, out_y0)
 
         # draw output bias bus
         self._connect_output(io_layer, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
@@ -200,10 +203,10 @@ class RDACRow(TemplateBase):
             vss_tid = inst.get_pin('VSS_b', row=ridx, col=0).track_id
             self.connect_to_tracks(vss_list, vss_tid)
 
-    def _connect_input(self, inst_list, in_layer, nin, nout_tot, nout_arr_list, ny_input,
+    def _connect_input(self, inst_list, in_layer, tr0, nin, nout_tot, nout_arr_list, ny_input,
                        blk_w, blk_h, fill_config, show_pins):
         # export inputs
-        cnt = 1
+        cnt = tr0 + 1
         pin_cnt = 0
         fmt = 'code<%d>'
         lower = upper = self.bound_box.xc_unit
@@ -233,7 +236,7 @@ class RDACRow(TemplateBase):
                     pin_cnt += nin
 
         # add shield wires, and connect to fill
-        sh_warr = self.add_wires(in_layer, 0, lower, upper, num=nout_tot + 1, pitch=nin + 1,
+        sh_warr = self.add_wires(in_layer, tr0, lower, upper, num=nout_tot + 1, pitch=nin + 1,
                                  unit_mode=True)
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
         nx_input = bnd_box.width_unit // blk_w
