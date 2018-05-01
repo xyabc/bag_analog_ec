@@ -303,14 +303,14 @@ class RDACArray(TemplateBase):
         return dict(
             nin0='number of select bits for mux level 0.',
             nin1='number of select bits for mux level 1.',
-            nrow='number of rows.',
             name_list2='The name of each voltage bias.',
-            nout_list='list of number of outputs for each DAC in a row.',
+            nout_list2='list of number of outputs for each DAC for each row.',
+            num_vdd_list='Number of VDD-referenced outputs per row.',
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
-            fill_config='Fill configuration dictionary.',
+            fill_config='fill configuration dictionary.',
+            bias_config='bias configuration dictionary.',
             top_layer='top layer ID.',
-            num_vdd='Number of VDD-referenced outputs.',
             fill_orient_mode='Fill block orientation mode.',
             show_pins='True to show pins.',
         )
@@ -320,7 +320,6 @@ class RDACArray(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             top_layer=None,
-            num_vdd=0,
             fill_orient_mode=0,
             show_pins=True,
         )
@@ -329,59 +328,93 @@ class RDACArray(TemplateBase):
         # type: () -> None
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
-        nrow = self.params['nrow']
         name_list2 = self.params['name_list2']
+        nout_list2 = self.params['nout_list2']
+        num_vdd_list = self.params['num_vdd_list']
+        fill_config = self.params['fill_config']
         fill_orient_mode = self.params['fill_orient_mode']
         show_pins = self.params['show_pins']
 
-        res = self.grid.resolution
-
+        ycur = 0
+        inst_list = []
+        nout_arr_list = []
+        fill_info_list = []
         params = self.params.copy()
         params['show_pins'] = False
-        master0 = self.new_template(params=params, temp_cls=RDACRow)
-        master_box = master0.bound_box
+        tot_box = BBox.get_invalid_bbox()
+        top_layer = res_params = mux_params = blk_w = blk_h = None
+        for row_idx, (num_vdd, nout_list) in enumerate(zip(num_vdd_list, nout_list2)):
+            if row_idx % 2 == 0:
+                orient = 'R0'
+                cur_fo_mode = fill_orient_mode
+            else:
+                orient = 'MX'
+                cur_fo_mode = fill_orient_mode ^ 2
+            params['nout_list'] = nout_list
+            params['num_vdd'] = num_vdd
+            params['fill_orient_mode'] = cur_fo_mode
+            master = self.new_template(params=params, temp_cls=RDACRow)
+            nout_arr_list.extend(master.sch_params['nout_arr_list'])
+            if top_layer is None:
+                top_layer = master.top_layer
+                res_params = master.sch_params['res_params']
+                mux_params = master.sch_params['mux_params']
+                blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
 
-        num0 = (nrow + 1) // 2
-        num1 = nrow - num0
-        row_h = master_box.height_unit
-        inst0 = self.add_instance(master0, 'X0', loc=(0, 0), ny=num0, spy=row_h, unit_mode=True)
-        if num1 == 0:
-            inst_list = [inst0]
-        else:
-            params['fill_orient_mode'] = fill_orient_mode ^ 2
-            master1 = self.new_template(params=params, temp_cls=RDACRow)
-            inst1 = self.add_instance(master1, 'X1', loc=(0, 2 * row_h), orient='MX',
-                                      ny=num1, spy=row_h, unit_mode=True)
-            inst_list = [inst0, inst1]
+            ny = master.bound_box.height_unit // blk_h
+            fill_info_list.append((master.bound_box.right_unit, ycur, ny, cur_fo_mode))
+            if row_idx % 2 == 1:
+                ycur += master.bound_box.height_unit
+            inst = self.add_instance(master, 'X%d' % row_idx, loc=(0, ycur),
+                                     orient=orient, unit_mode=True)
 
-        bnd_box = BBox(0, 0, master_box.width_unit, row_h * nrow, res, unit_mode=True)
-        self.set_size_from_bound_box(master0.top_layer, bnd_box)
-        self.array_box = bnd_box
+            inst_box = inst.bound_box
+            tot_box = tot_box.merge(inst_box)
+            ycur = tot_box.top_unit
+            inst_list.append(inst)
+
+        self.set_size_from_bound_box(top_layer, tot_box)
+        self.array_box = tot_box
+        self.add_cell_boundary(tot_box)
+        xr_tot = tot_box.right_unit
 
         nin = nin0 + nin1
-        nrow_types = len(inst_list)
         io_name_list = []
-        for row_idx, name_list in enumerate(name_list2):
+        for inst, (xr, yf, ny, fo_mode), name_list in zip(inst_list, fill_info_list, name_list2):
+            # add fill if needed
+            dx = xr_tot - xr
+            if dx > 0:
+                nx = dx // blk_w
+                params = dict(fill_config=fill_config, bot_layer=top_layer - 1, show_pins=False)
+                fill_master = self.new_template(params=params, temp_cls=PowerFill)
+                orient = PowerFill.get_fill_orient(fill_orient_mode)
+                x0 = 0 if (fill_orient_mode & 1 == 0) else 1
+                y0 = 0 if (fill_orient_mode & 2 == 0) else 1
+                floc = (xr + x0 * blk_w, yf + y0 * blk_h)
+                self.add_instance(fill_master, loc=floc, orient=orient, nx=nx, ny=ny,
+                                  spx=blk_w, spy=blk_h, unit_mode=True)
+
             in_cnt = out_cnt = 0
-            inst = inst_list[row_idx % nrow_types]
             for name in name_list:
                 io_name_list.append(name)
                 out_pin = inst.get_pin('out<%d>' % out_cnt)
                 self.add_pin('v_%s' % name, out_pin, show=show_pins)
                 for in_idx in range(nin):
                     in_pin = inst.get_pin('code<%d>' % in_cnt)
-                    self.add_pin('bias_%s<%d>' % (name, in_idx), in_pin, show=show_pins)
+                    in_pin = self.extend_wires(in_pin, upper=xr_tot, unit_mode=True)
+                    self.add_pin('bias_%s<%d>' % (name, in_idx), in_pin, show=show_pins,
+                                 edge_mode=1)
                     in_cnt += 1
                 out_cnt += 1
 
-        self.reexport(inst0.get_port('VDD'), show=show_pins)
-        self.reexport(inst0.get_port('VSS'), show=show_pins)
+        self.reexport(inst_list[0].get_port('VDD'), show=show_pins)
+        self.reexport(inst_list[0].get_port('VSS'), show=show_pins)
 
         self._sch_params = dict(
             nin0=nin0,
             nin1=nin1,
-            nout_arr_list=master0.sch_params['nout_arr_list'] * nrow,
-            res_params=master0.sch_params['res_params'],
-            mux_params=master0.sch_params['mux_params'],
+            nout_arr_list=nout_arr_list,
+            res_params=res_params,
+            mux_params=mux_params,
             io_name_list=io_name_list,
         )
