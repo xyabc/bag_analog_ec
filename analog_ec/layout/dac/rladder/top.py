@@ -6,6 +6,7 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any
 
+from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
@@ -46,85 +47,139 @@ class RDACRow(TemplateBase):
     @classmethod
     def get_params_info(cls):
         # type: () -> Dict[str, str]
-        params = ResLadderDAC.get_params_info()
-        params['ndac'] = 'number of DACs in a row.'
-        return params
+        return dict(
+            nin0='number of select bits for mux level 0.',
+            nin1='number of select bits for mux level 1.',
+            nout_list='list of number of outputs for each DAC.',
+            res_params='resistor ladder parameters.',
+            mux_params='passgate mux parameters.',
+            fill_config='Fill configuration dictionary.',
+            top_layer='top layer ID.',
+            show_pins='True to show pins.',
+        )
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
-        return ResLadderDAC.get_default_param_values()
+        return dict(
+            top_layer=None,
+            show_pins=True,
+        )
 
     def draw_layout(self):
         # type: () -> None
         nin0 = self.params['nin0']
         nin1 = self.params['nin1']
+        nout_list = self.params['nout_list']
+        res_params = self.params['res_params']
+        mux_params = self.params['mux_params']
         fill_config = self.params['fill_config']
-        nout = self.params['nout']
-        ndac = self.params['ndac']
+        top_layer = self.params['top_layer']
         show_pins = self.params['show_pins']
 
-        params = self.params.copy()
-        params['show_pins'] = False
-        master = self.new_template(params=params, temp_cls=ResLadderDAC)
+        res = self.grid.resolution
+
+        params = dict(
+            nin0=nin0,
+            nin1=nin1,
+            res_params=res_params,
+            mux_params=mux_params,
+            fill_config=fill_config,
+            top_layer=top_layer,
+            show_pins=False
+        )
+        master_list = []
+        ngrp = 0
+        master_cache = {}
+        nout_prev = None
+        nout_arr_list = []
+        for nout in nout_list:
+            if nout == nout_prev:
+                master_list[-1][1] += 1
+                nout_arr_list[-1][1] += 1
+            else:
+                if nout in master_cache:
+                    master = master_cache[nout]
+                else:
+                    params['nout'] = nout
+                    master = self.new_template(params=params, temp_cls=ResLadderDAC)
+                    master_cache[nout] = master
+                master_list.append([master, 1])
+                nout_arr_list.append([nout, 1])
+            ngrp += nout
+            nout_prev = nout
+
+        master0 = master_list[0][0]
+        height = master0.bound_box.height_unit
+        top_layer = master0.top_layer
+        in_layer = master0.get_port('code<0>').get_pins()[0].layer_id - 1
 
         # compute space required for input bus
         nin = nin0 + nin1
-        ngrp = nout * ndac
-        ntot = nin * nout * ndac + ngrp + 1
-        in_layer = master.get_port('code<0>').get_pins()[0].layer_id - 1
+        ntot = nin * ngrp + ngrp + 1
         in_pitch = self.grid.get_track_pitch(in_layer, unit_mode=True)
-        blk_w, blk_h = self.grid.get_fill_size(master.top_layer, fill_config, unit_mode=True)
+        blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
         ny_input = (-(-(ntot * in_pitch) // blk_h) + 1)
         in_height = ny_input * blk_h
 
-        bnd_box = master.bound_box
-        inst = self.add_instance(master, 'XDAC', loc=(0, in_height),
-                                 nx=ndac, spx=bnd_box.width_unit, unit_mode=True)
+        inst_list = []
+        xcur = 0
+        for master, nx in master_list:
+            spx = master.bound_box.width_unit
+            inst = self.add_instance(master, 'XDAC', loc=(xcur, in_height),
+                                     nx=nx, spx=spx, unit_mode=True)
+            xcur += nx * spx
+            inst_list.append((inst, nx))
 
-        bnd_box = inst.bound_box.extend(y=0, unit_mode=True)
-        self.set_size_from_bound_box(master.top_layer, bnd_box)
+        bnd_box = BBox(0, 0, xcur, height, res, unit_mode=True)
+        self.set_size_from_bound_box(top_layer, bnd_box)
         self.array_box = bnd_box
 
-        # connect inputs
-        self.connect_io(inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
-                        fill_config, show_pins)
+        # connect inputs/outputs
+        out_pins = self.connect_io(inst_list, in_layer, nin, ngrp, nout_arr_list, ny_input,
+                                   blk_w, blk_h, fill_config, show_pins)
+        for idx, warr in enumerate(out_pins):
+            self.add_pin('out<%d>' % idx, warr, show=show_pins)
 
         self._sch_params = dict(
-            dac_params=master.sch_params,
-            ndac=ndac,
+            nin0=nin0,
+            nin1=nin1,
+            nout_arr_list=nout_arr_list,
+            res_params=master0.sch_params['res_params'],
+            mux_params=master0.sch_params['mux_params'],
         )
 
-    def connect_io(self, inst, in_layer, nin, nout, ny_input, blk_w, blk_h,
+    def connect_io(self, inst_list, in_layer, nin, ngrp, nout_arr_list, ny_input, blk_w, blk_h,
                    fill_config, show_pins):
         # export inputs
         cnt = 1
         pin_cnt = 0
-        ndac = inst.nx
-        ngrp = nout * ndac
         fmt = 'code<%d>'
         lower = upper = self.bound_box.xc_unit
-        for col_idx in range(ndac):
-            pin_off = 0
-            for out_idx in range(nout):
-                # export output
-                if nout == 1:
-                    out_pin = inst.get_pin('out', col=col_idx)
-                else:
-                    out_pin = inst.get_pin('out<%d>' % out_idx, col=col_idx)
-                self.add_pin('out<%d>' % (out_idx + col_idx * nout), out_pin, show=show_pins)
-                # connect inputs
-                warrs = [inst.get_pin(fmt % (pin_off + in_idx), col=col_idx)
-                         for in_idx in range(nin)]
-                tr_idx_list = list(range(cnt, cnt + nin))
-                warrs = self.connect_matching_tracks(warrs, in_layer, tr_idx_list, unit_mode=True)
-                for idx, w in enumerate(warrs):
-                    self.add_pin(fmt % (pin_cnt + idx), w, show=show_pins)
-                    lower = min(lower, w.lower_unit)
-                    upper = max(upper, w.upper_unit)
-                cnt += nin + 1
-                pin_off += nin
-                pin_cnt += nin
+        out_pins = []
+        for (inst, nx), (nout, _) in zip(inst_list, nout_arr_list):
+            for col_idx in range(nx):
+                pin_off = 0
+                for out_idx in range(nout):
+                    # export output
+                    if nout == 1:
+                        out_pin = inst.get_pin('out', col=col_idx)
+                    else:
+                        out_pin = inst.get_pin('out<%d>' % out_idx, col=col_idx)
+                    out_pins.append(out_pin)
+                    # connect inputs
+                    warrs = [inst.get_pin(fmt % (pin_off + in_idx), col=col_idx)
+                             for in_idx in range(nin)]
+                    tr_idx_list = list(range(cnt, cnt + nin))
+                    warrs = self.connect_matching_tracks(warrs, in_layer, tr_idx_list,
+                                                         unit_mode=True)
+                    for idx, w in enumerate(warrs):
+                        self.add_pin(fmt % (pin_cnt + idx), w, show=show_pins)
+                        lower = min(lower, w.lower_unit)
+                        upper = max(upper, w.upper_unit)
+                    cnt += nin + 1
+                    pin_off += nin
+                    pin_cnt += nin
 
         # add shield wires
         sh_warr = self.add_wires(in_layer, 0, lower, upper, num=ngrp + 1, pitch=nin + 1,
@@ -143,3 +198,5 @@ class RDACRow(TemplateBase):
 
         self.reexport(inst.get_port('VDD', row=0, col=0), show=show_pins)
         self.reexport(inst.get_port('VSS', row=0, col=0), show=show_pins)
+
+        return out_pins

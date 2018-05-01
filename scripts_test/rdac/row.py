@@ -8,7 +8,7 @@ from analog_ec.layout.dac.rladder.top import RDACRow
 
 
 if __name__ == '__main__':
-    with open('specs_test/rdac/row.yaml', 'r') as f:
+    with open('specs_test/analog_ec/rdac/row.yaml', 'r') as f:
         block_specs = yaml.load(f)
 
     local_dict = locals()
