@@ -143,17 +143,19 @@ class RDACRow(TemplateBase):
 
         out_y0 = in_h + dac_h
         out_y1 = out_y0 + vdd_h + sep_h
+        out_y1 = -(-out_y1 // blk_h) * blk_h
         tot_h = -(-(out_y1 + vss_h + io_pitch // 2) // blk_h) * blk_h
         bnd_box = BBox(0, 0, xcur, tot_h, res, unit_mode=True)
         self.set_size_from_bound_box(top_layer, bnd_box)
         self.array_box = bnd_box
 
-        # connect inputs/outputs
-        out_pins = self._connect_input(inst_list, io_layer, nin, nout_tot, nout_arr_list, ny_input,
-                                       blk_w, blk_h, fill_config, show_pins)
+        # connect inputs, gather outputs, and draw fill
+        out_pins, fm = self._connect_input(inst_list, io_layer, nin, nout_tot, nout_arr_list,
+                                           ny_input, blk_w, blk_h, fill_config, out_y0)
 
         # draw output bias bus
-        self._connect_output(io_layer, out_pins, num_vdd, num_vss, out_y0, out_y1, show_pins)
+        self._connect_output(io_layer, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
+                             tot_h, blk_w, blk_h, show_pins)
 
         for idx, warr in enumerate(out_pins):
             self.add_pin('out<%d>' % idx, warr, show=show_pins)
@@ -166,17 +168,37 @@ class RDACRow(TemplateBase):
             mux_params=master0.sch_params['mux_params'],
         )
 
-    def _connect_output(self, io_layer, out_pins, num_vdd, num_vss, y0, y1, show_pins):
+    def _connect_output(self, io_layer, out_pins, fill_master, num_vdd, num_vss, y0, y1,
+                        ytop, blk_w, blk_h, show_pins):
         if num_vdd > 0:
             vdd_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[:num_vdd], y0,
                                                     tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vdd_info.tracks):
-                self.add_pin('out<%d>' % idx, tr, show=show_pins)
+                self.add_pin('out<%d>' % idx, tr, show=show_pins, edge_mode=-1)
+            vdd_list = vdd_info.supplies
+        else:
+            vdd_list = None
         if num_vss > 0:
             vss_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[num_vdd:], y1,
                                                     tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vss_info.tracks):
-                self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins)
+                self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins, edge_mode=-1)
+            vss_list = vss_info.supplies
+        else:
+            vss_list = None
+
+        # draw fill
+        nx = self.bound_box.width_unit // blk_w
+        ny = (ytop - y0) // blk_h
+        inst = self.add_instance(fill_master, loc=(0, y0), nx=nx, ny=ny,
+                                 spx=blk_w, spy=blk_h, unit_mode=True)
+        if vdd_list:
+            vdd_tid = inst.get_pin('VDD_b', row=0, col=0).track_id
+            self.connect_to_tracks(vdd_list, vdd_tid)
+        if vss_list:
+            ridx = (y1 - y0) // blk_h
+            vss_tid = inst.get_pin('VSS_b', row=ridx, col=0).track_id
+            self.connect_to_tracks(vss_list, vss_tid)
 
     def _connect_input(self, inst_list, in_layer, nin, nout_tot, nout_arr_list, ny_input,
                        blk_w, blk_h, fill_config, show_pins):
@@ -210,7 +232,7 @@ class RDACRow(TemplateBase):
                     pin_off += nin
                     pin_cnt += nin
 
-        # add shield wires
+        # add shield wires, and connect to fill
         sh_warr = self.add_wires(in_layer, 0, lower, upper, num=nout_tot + 1, pitch=nin + 1,
                                  unit_mode=True)
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
@@ -224,8 +246,7 @@ class RDACRow(TemplateBase):
         fill_master = self.new_template(params=params, temp_cls=PowerFill)
         inst = self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
                                  spx=blk_w, spy=blk_h, unit_mode=True)
-
         self.reexport(inst.get_port('VDD', row=0, col=0), show=show_pins)
         self.reexport(inst.get_port('VSS', row=0, col=0), show=show_pins)
 
-        return out_pins
+        return out_pins, fill_master
