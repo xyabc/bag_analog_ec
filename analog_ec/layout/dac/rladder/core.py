@@ -55,6 +55,7 @@ class ResLadderDAC(TemplateBase):
             fill_config='Fill configuration dictionary.',
             nout='number of outputs.',
             top_layer='top layer ID.',
+            fill_orient_mode='Fill block orientation mode.',
             show_pins='True to show pins.',
         )
 
@@ -64,6 +65,7 @@ class ResLadderDAC(TemplateBase):
         return dict(
             nout=1,
             top_layer=None,
+            fill_orient_mode=0,
             show_pins=True,
         )
 
@@ -76,6 +78,7 @@ class ResLadderDAC(TemplateBase):
         fill_config = self.params['fill_config']
         nout = self.params['nout']
         top_layer = self.params['top_layer']
+        fill_orient_mode = self.params['fill_orient_mode']
         show_pins = self.params['show_pins']
 
         if nout <= 0:
@@ -193,7 +196,8 @@ class ResLadderDAC(TemplateBase):
         vss_list = sup_table['VSS']
         fill_width, fill_space, space, space_le = fill_config[sup_layer]
         self.do_power_fill(sup_layer, space, space_le, vdd_warrs=vdd_list, vss_warrs=vss_list,
-                           fill_width=fill_width, fill_space=fill_space, unit_mode=True)
+                           fill_width=fill_width, fill_space=fill_space,
+                           flip=(fill_orient_mode & 2 != 0), unit_mode=True)
         # add fill cells
         fill_params = dict(
             fill_config=fill_config,
@@ -201,9 +205,13 @@ class ResLadderDAC(TemplateBase):
             top_layer=top_layer,
             show_pins=False,
         )
+        orient = PowerFill.get_fill_orient(fill_orient_mode)
+        x0 = 0 if (fill_orient_mode & 1 == 0) else 1
+        y0 = 0 if (fill_orient_mode & 2 == 0) else 1
+        loc = (x0 * blk_w, y0 * blk_h)
         fill_master = self.new_template(params=fill_params, temp_cls=PowerFill)
-        fill_inst = self.add_instance(fill_master, 'XFILL', loc=(0, 0), nx=nfill_x, ny=nfill_y,
-                                      spx=blk_w, spy=blk_h, unit_mode=True)
+        fill_inst = self.add_instance(fill_master, 'XFILL', loc=loc, orient=orient,
+                                      nx=nfill_x, ny=nfill_y, spx=blk_w, spy=blk_h, unit_mode=True)
         vdd_list = fill_inst.get_all_port_pins('VDD')
         vss_list = fill_inst.get_all_port_pins('VSS')
         self.add_pin('VDD', self.connect_wires(vdd_list), show=show_pins)

@@ -57,6 +57,7 @@ class RDACRow(TemplateBase):
             fill_config='Fill configuration dictionary.',
             top_layer='top layer ID.',
             num_vdd='Number of VDD-referenced outputs.',
+            fill_orient_mode='Fill block orientation mode.',
             show_pins='True to show pins.',
         )
 
@@ -66,6 +67,7 @@ class RDACRow(TemplateBase):
         return dict(
             top_layer=None,
             num_vdd=0,
+            fill_orient_mode=0,
             show_pins=True,
         )
 
@@ -81,6 +83,7 @@ class RDACRow(TemplateBase):
         fill_config = self.params['fill_config']
         top_layer = self.params['top_layer']
         num_vdd = self.params['num_vdd']
+        fill_orient_mode = self.params['fill_orient_mode']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
@@ -92,6 +95,7 @@ class RDACRow(TemplateBase):
             mux_params=mux_params,
             fill_config=fill_config,
             top_layer=top_layer,
+            fill_orient_mode=fill_orient_mode,
             show_pins=False
         )
         master_list = []
@@ -154,11 +158,11 @@ class RDACRow(TemplateBase):
         # connect inputs, gather outputs, and draw fill
         out_pins, fm = self._connect_input(inst_list, io_layer, in_tr0, nin, nout_tot,
                                            nout_arr_list, ny_input, blk_w, blk_h,
-                                           fill_config, out_y0)
+                                           fill_config, show_pins, fill_orient_mode)
 
         # draw output bias bus
         self._connect_output(io_layer, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
-                             tot_h, blk_w, blk_h, show_pins)
+                             tot_h, blk_w, blk_h, show_pins, fill_orient_mode)
 
         for idx, warr in enumerate(out_pins):
             self.add_pin('out<%d>' % idx, warr, show=show_pins)
@@ -172,7 +176,7 @@ class RDACRow(TemplateBase):
         )
 
     def _connect_output(self, io_layer, out_pins, fill_master, num_vdd, num_vss, y0, y1,
-                        ytop, blk_w, blk_h, show_pins):
+                        ytop, blk_w, blk_h, show_pins, fill_orient_mode):
         if num_vdd > 0:
             vdd_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[:num_vdd], y0,
                                                     tr_lower=0, lu_end_mode=1)
@@ -193,7 +197,12 @@ class RDACRow(TemplateBase):
         # draw fill
         nx = self.bound_box.width_unit // blk_w
         ny = (ytop - y0) // blk_h
-        inst = self.add_instance(fill_master, loc=(0, y0), nx=nx, ny=ny,
+
+        orient = PowerFill.get_fill_orient(fill_orient_mode)
+        dx = 0 if (fill_orient_mode & 1 == 0) else 1
+        dy = 0 if (fill_orient_mode & 2 == 0) else 1
+        loc = (dx * blk_w, y0 + dy * blk_h)
+        inst = self.add_instance(fill_master, loc=loc, orient=orient, nx=nx, ny=ny,
                                  spx=blk_w, spy=blk_h, unit_mode=True)
         if vdd_list:
             vdd_tid = inst.get_pin('VDD_b', row=0, col=0).track_id
@@ -204,7 +213,7 @@ class RDACRow(TemplateBase):
             self.connect_to_tracks(vss_list, vss_tid)
 
     def _connect_input(self, inst_list, in_layer, tr0, nin, nout_tot, nout_arr_list, ny_input,
-                       blk_w, blk_h, fill_config, show_pins):
+                       blk_w, blk_h, fill_config, show_pins, fill_orient_mode):
         # export inputs
         cnt = tr0 + 1
         pin_cnt = 0
@@ -241,13 +250,19 @@ class RDACRow(TemplateBase):
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
         nx_input = bnd_box.width_unit // blk_w
         inst_list2 = PowerFill.add_fill_blocks(self, bnd_box, fill_config,
-                                               in_layer + 1, in_layer + 2)
+                                               in_layer + 1, in_layer + 2,
+                                               orient_mode=fill_orient_mode)
         vss_warrs = [pin for inst in inst_list2[0] for pin in inst.port_pins_iter('VSS_b')]
         vss_warrs = self.connect_wires(vss_warrs)
         self.draw_vias_on_intersections(sh_warr, vss_warrs)
         params = dict(fill_config=fill_config, bot_layer=in_layer + 2, show_pins=False)
         fill_master = self.new_template(params=params, temp_cls=PowerFill)
-        inst = self.add_instance(fill_master, loc=(0, 0), nx=nx_input, ny=ny_input,
+
+        orient = PowerFill.get_fill_orient(fill_orient_mode)
+        x0 = 0 if (fill_orient_mode & 1 == 0) else 1
+        y0 = 0 if (fill_orient_mode & 2 == 0) else 1
+        loc = (x0 * blk_w, y0 * blk_h)
+        inst = self.add_instance(fill_master, loc=loc, orient=orient, nx=nx_input, ny=ny_input,
                                  spx=blk_w, spy=blk_h, unit_mode=True)
         self.reexport(inst.get_port('VDD', row=0, col=0), show=show_pins)
         self.reexport(inst.get_port('VSS', row=0, col=0), show=show_pins)
