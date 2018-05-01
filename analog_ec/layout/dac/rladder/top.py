@@ -10,6 +10,7 @@ from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
+from abs_templates_ec.routing.bias import BiasShield
 
 from .core import ResLadderDAC
 
@@ -55,6 +56,7 @@ class RDACRow(TemplateBase):
             mux_params='passgate mux parameters.',
             fill_config='Fill configuration dictionary.',
             top_layer='top layer ID.',
+            num_vdd='Number of VDD-referenced outputs.',
             show_pins='True to show pins.',
         )
 
@@ -63,6 +65,7 @@ class RDACRow(TemplateBase):
         # type: () -> Dict[str, Any]
         return dict(
             top_layer=None,
+            num_vdd=0,
             show_pins=True,
         )
 
@@ -75,6 +78,7 @@ class RDACRow(TemplateBase):
         mux_params = self.params['mux_params']
         fill_config = self.params['fill_config']
         top_layer = self.params['top_layer']
+        num_vdd = self.params['num_vdd']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
@@ -89,7 +93,7 @@ class RDACRow(TemplateBase):
             show_pins=False
         )
         master_list = []
-        ngrp = 0
+        nout_tot = 0
         master_cache = {}
         nout_prev = None
         nout_arr_list = []
@@ -106,38 +110,51 @@ class RDACRow(TemplateBase):
                     master_cache[nout] = master
                 master_list.append([master, 1])
                 nout_arr_list.append([nout, 1])
-            ngrp += nout
+            nout_tot += nout
             nout_prev = nout
 
         master0 = master_list[0][0]
-        height = master0.bound_box.height_unit
+        dac_h = master0.bound_box.height_unit
         top_layer = master0.top_layer
-        in_layer = master0.get_port('code<0>').get_pins()[0].layer_id - 1
+        io_layer = master0.get_port('code<0>').get_pins()[0].layer_id - 1
 
         # compute space required for input bus
         nin = nin0 + nin1
-        ntot = nin * ngrp + ngrp + 1
-        in_pitch = self.grid.get_track_pitch(in_layer, unit_mode=True)
+        ntot = nin * nout_tot + nout_tot + 1
+        in_pitch = self.grid.get_track_pitch(io_layer, unit_mode=True)
         blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
         ny_input = (-(-(ntot * in_pitch) // blk_h) + 1)
-        in_height = ny_input * blk_h
+        in_h = ny_input * blk_h
+        # compute space required for output bus
+        num_vss = nout_tot - num_vdd
+        vdd_h = 0 if num_vdd == 0 else BiasShield.get_block_size(self.grid, io_layer, num_vdd)[1]
+        vss_h = 0 if num_vss == 0 else BiasShield.get_block_size(self.grid, io_layer, num_vss)[1]
+        io_pitch = self.grid.get_track_pitch(io_layer, unit_mode=True)
+        sep_h = io_pitch if vdd_h > 0 and vss_h > 0 else 0
 
         inst_list = []
         xcur = 0
         for master, nx in master_list:
             spx = master.bound_box.width_unit
-            inst = self.add_instance(master, 'XDAC', loc=(xcur, in_height),
+            inst = self.add_instance(master, 'XDAC', loc=(xcur, in_h),
                                      nx=nx, spx=spx, unit_mode=True)
             xcur += nx * spx
             inst_list.append((inst, nx))
 
-        bnd_box = BBox(0, 0, xcur, height, res, unit_mode=True)
+        out_y0 = in_h + dac_h
+        out_y1 = out_y0 + vdd_h + sep_h
+        tot_h = -(-(out_y1 + vss_h + io_pitch // 2) // blk_h) * blk_h
+        bnd_box = BBox(0, 0, xcur, tot_h, res, unit_mode=True)
         self.set_size_from_bound_box(top_layer, bnd_box)
         self.array_box = bnd_box
 
         # connect inputs/outputs
-        out_pins = self.connect_io(inst_list, in_layer, nin, ngrp, nout_arr_list, ny_input,
-                                   blk_w, blk_h, fill_config, show_pins)
+        out_pins = self._connect_input(inst_list, io_layer, nin, nout_tot, nout_arr_list, ny_input,
+                                       blk_w, blk_h, fill_config, show_pins)
+
+        # draw output bias bus
+        self._connect_output(io_layer, out_pins, num_vdd, num_vss, out_y0, out_y1, show_pins)
+
         for idx, warr in enumerate(out_pins):
             self.add_pin('out<%d>' % idx, warr, show=show_pins)
 
@@ -149,8 +166,20 @@ class RDACRow(TemplateBase):
             mux_params=master0.sch_params['mux_params'],
         )
 
-    def connect_io(self, inst_list, in_layer, nin, ngrp, nout_arr_list, ny_input, blk_w, blk_h,
-                   fill_config, show_pins):
+    def _connect_output(self, io_layer, out_pins, num_vdd, num_vss, y0, y1, show_pins):
+        if num_vdd > 0:
+            vdd_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[:num_vdd], y0,
+                                                    tr_lower=0, lu_end_mode=1)
+            for idx, tr in enumerate(vdd_info.tracks):
+                self.add_pin('out<%d>' % idx, tr, show=show_pins)
+        if num_vss > 0:
+            vss_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[num_vdd:], y1,
+                                                    tr_lower=0, lu_end_mode=1)
+            for idx, tr in enumerate(vss_info.tracks):
+                self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins)
+
+    def _connect_input(self, inst_list, in_layer, nin, nout_tot, nout_arr_list, ny_input,
+                       blk_w, blk_h, fill_config, show_pins):
         # export inputs
         cnt = 1
         pin_cnt = 0
@@ -182,7 +211,7 @@ class RDACRow(TemplateBase):
                     pin_cnt += nin
 
         # add shield wires
-        sh_warr = self.add_wires(in_layer, 0, lower, upper, num=ngrp + 1, pitch=nin + 1,
+        sh_warr = self.add_wires(in_layer, 0, lower, upper, num=nout_tot + 1, pitch=nin + 1,
                                  unit_mode=True)
         bnd_box = self.bound_box.with_interval('y', 0, (ny_input - 1) * blk_h, unit_mode=True)
         nx_input = bnd_box.width_unit // blk_w
