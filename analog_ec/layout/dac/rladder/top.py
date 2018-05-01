@@ -164,9 +164,6 @@ class RDACRow(TemplateBase):
         self._connect_output(io_layer, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
                              tot_h, blk_w, blk_h, show_pins, fill_orient_mode)
 
-        for idx, warr in enumerate(out_pins):
-            self.add_pin('out<%d>' % idx, warr, show=show_pins)
-
         self._sch_params = dict(
             nin0=nin0,
             nin1=nin1,
@@ -304,6 +301,7 @@ class RDACArray(TemplateBase):
             nin0='number of select bits for mux level 0.',
             nin1='number of select bits for mux level 1.',
             nrow='number of rows.',
+            name_list2='The name of each voltage bias.',
             nout_list='list of number of outputs for each DAC in a row.',
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
@@ -326,23 +324,59 @@ class RDACArray(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
+        nin0 = self.params['nin0']
+        nin1 = self.params['nin1']
         nrow = self.params['nrow']
+        name_list2 = self.params['name_list2']
         fill_orient_mode = self.params['fill_orient_mode']
+        show_pins = self.params['show_pins']
 
-        if nrow != 2:
-            # TODO: fix this
-            raise ValueError('Only support nrow = 2.')
+        res = self.grid.resolution
 
         params = self.params.copy()
         params['show_pins'] = False
         master0 = self.new_template(params=params, temp_cls=RDACRow)
-        params['fill_orient_mode'] = fill_orient_mode ^ 2
-        master1 = self.new_template(params=params, temp_cls=RDACRow)
+        master_box = master0.bound_box
 
-        inst0 = self.add_instance(master0, 'X0', loc=(0, 0), unit_mode=True)
-        y0 = inst0.bound_box.top_unit * 2
-        inst1 = self.add_instance(master1, 'X1', loc=(0, y0), orient='MX', unit_mode=True)
+        num0 = (nrow + 1) // 2
+        num1 = nrow - num0
+        row_h = master_box.height_unit
+        inst0 = self.add_instance(master0, 'X0', loc=(0, 0), ny=num0, spy=row_h, unit_mode=True)
+        if num1 == 0:
+            inst_list = [inst0]
+        else:
+            params['fill_orient_mode'] = fill_orient_mode ^ 2
+            master1 = self.new_template(params=params, temp_cls=RDACRow)
+            inst1 = self.add_instance(master1, 'X1', loc=(0, 2 * row_h), orient='MX',
+                                      ny=num1, spy=row_h, unit_mode=True)
+            inst_list = [inst0, inst1]
 
-        bnd_box = inst0.bound_box.merge(inst1.bound_box)
+        bnd_box = BBox(0, 0, master_box.width_unit, row_h * nrow, res, unit_mode=True)
         self.set_size_from_bound_box(master0.top_layer, bnd_box)
         self.array_box = bnd_box
+
+        nin = nin0 + nin1
+        nrow_types = len(inst_list)
+        for row_idx, name_list in enumerate(name_list2):
+            in_cnt = out_cnt = 0
+            inst = inst_list[row_idx % nrow_types]
+            for name in name_list:
+                out_pin = inst.get_pin('out<%d>' % out_cnt)
+                self.add_pin('v_%s' % name, out_pin, show=show_pins)
+                for in_idx in range(nin):
+                    in_pin = inst.get_pin('code<%d>' % in_cnt)
+                    self.add_pin('bias_%s<%d>' % (name, in_idx), in_pin, show=show_pins)
+                    in_cnt += 1
+                out_cnt += 1
+
+        self.reexport(inst0.get_port('VDD'), show=show_pins)
+        self.reexport(inst0.get_port('VSS'), show=show_pins)
+
+        self._sch_params = dict(
+            nin0=nin0,
+            nin1=nin1,
+            nout_arr_list=master0.sch_params['nout_arr_list'] * nrow,
+            res_params=master0.sch_params['res_params'],
+            mux_params=master0.sch_params['mux_params'],
+            name_list2=name_list2,
+        )
