@@ -357,10 +357,12 @@ class RDACArray(TemplateBase):
 
         nin = nin0 + nin1
         nrow_types = len(inst_list)
+        io_name_list = []
         for row_idx, name_list in enumerate(name_list2):
             in_cnt = out_cnt = 0
             inst = inst_list[row_idx % nrow_types]
             for name in name_list:
+                io_name_list.append(name)
                 out_pin = inst.get_pin('out<%d>' % out_cnt)
                 self.add_pin('v_%s' % name, out_pin, show=show_pins)
                 for in_idx in range(nin):
@@ -378,5 +380,5 @@ class RDACArray(TemplateBase):
             nout_arr_list=master0.sch_params['nout_arr_list'] * nrow,
             res_params=master0.sch_params['res_params'],
             mux_params=master0.sch_params['mux_params'],
-            name_list2=name_list2,
+            io_name_list=io_name_list,
         )
