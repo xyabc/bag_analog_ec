@@ -55,6 +55,7 @@ class RDACRow(TemplateBase):
             res_params='resistor ladder parameters.',
             mux_params='passgate mux parameters.',
             fill_config='Fill configuration dictionary.',
+            bias_config='Bias routing configuration dictionary.',
             top_layer='top layer ID.',
             num_vdd='Number of VDD-referenced outputs.',
             fill_orient_mode='Fill block orientation mode.',
@@ -81,6 +82,7 @@ class RDACRow(TemplateBase):
         res_params = self.params['res_params']
         mux_params = self.params['mux_params']
         fill_config = self.params['fill_config']
+        bias_config = self.params['bias_config']
         top_layer = self.params['top_layer']
         num_vdd = self.params['num_vdd']
         fill_orient_mode = self.params['fill_orient_mode']
@@ -133,10 +135,10 @@ class RDACRow(TemplateBase):
         in_h = ny_input * blk_h
         # compute space required for output bus
         num_vss = nout_tot - num_vdd
-        vdd_h = 0 if num_vdd == 0 else BiasShield.get_block_size(self.grid, io_layer, num_vdd)[1]
-        vss_h = 0 if num_vss == 0 else BiasShield.get_block_size(self.grid, io_layer, num_vss)[1]
-        io_pitch = self.grid.get_track_pitch(io_layer, unit_mode=True)
-        sep_h = io_pitch if vdd_h > 0 and vss_h > 0 else 0
+        vdd_h = 0 if num_vdd == 0 else BiasShield.get_block_size(self.grid, io_layer, bias_config,
+                                                                 num_vdd)[1]
+        vss_h = 0 if num_vss == 0 else BiasShield.get_block_size(self.grid, io_layer, bias_config,
+                                                                 num_vss)[1]
 
         inst_list = []
         xcur = 0
@@ -148,12 +150,13 @@ class RDACRow(TemplateBase):
             inst_list.append((inst, nx))
 
         out_y0 = in_h + dac_h
-        out_y1 = out_y0 + vdd_h + sep_h
+        out_y1 = out_y0 + vdd_h
         out_y1 = -(-out_y1 // blk_h) * blk_h
-        tot_h = -(-(out_y1 + vss_h + io_pitch // 2) // blk_h) * blk_h
+        tot_h = -(-(out_y1 + vss_h) // blk_h) * blk_h
         bnd_box = BBox(0, 0, xcur, tot_h, res, unit_mode=True)
         self.set_size_from_bound_box(top_layer, bnd_box)
         self.array_box = bnd_box
+        self.add_cell_boundary(bnd_box)
 
         # connect inputs, gather outputs, and draw fill
         out_pins, fm = self._connect_input(inst_list, io_layer, in_tr0, nin, nout_tot,
@@ -161,7 +164,7 @@ class RDACRow(TemplateBase):
                                            fill_config, show_pins, fill_orient_mode)
 
         # draw output bias bus
-        self._connect_output(io_layer, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
+        self._connect_output(io_layer, bias_config, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
                              tot_h, blk_w, blk_h, show_pins, fill_orient_mode)
 
         self._sch_params = dict(
@@ -172,19 +175,19 @@ class RDACRow(TemplateBase):
             mux_params=master0.sch_params['mux_params'],
         )
 
-    def _connect_output(self, io_layer, out_pins, fill_master, num_vdd, num_vss, y0, y1,
-                        ytop, blk_w, blk_h, show_pins, fill_orient_mode):
+    def _connect_output(self, io_layer, bias_config, out_pins, fill_master, num_vdd, num_vss,
+                        y0, y1, ytop, blk_w, blk_h, show_pins, fill_orient_mode):
         if num_vdd > 0:
-            vdd_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[:num_vdd], y0,
-                                                    tr_lower=0, lu_end_mode=1)
+            vdd_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[:num_vdd],
+                                                    y0, tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vdd_info.tracks):
                 self.add_pin('out<%d>' % idx, tr, show=show_pins, edge_mode=-1)
             vdd_list = vdd_info.supplies
         else:
             vdd_list = None
         if num_vss > 0:
-            vss_info = BiasShield.draw_bias_shields(self, io_layer, out_pins[num_vdd:], y1,
-                                                    tr_lower=0, lu_end_mode=1)
+            vss_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[num_vdd:],
+                                                    y1, tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vss_info.tracks):
                 self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins, edge_mode=-1)
             vss_list = vss_info.supplies
