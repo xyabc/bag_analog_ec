@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class RDACRow(TemplateBase):
-    """A voltage DAC made of resistor string ladder.
+    """A row of resistor ladder DACs.
 
     Parameters
     ----------
@@ -218,7 +218,8 @@ class RDACRow(TemplateBase):
         cnt = tr0 + 1
         pin_cnt = 0
         fmt = 'code<%d>'
-        lower = upper = self.bound_box.xc_unit
+        lower = self.bound_box.xc_unit
+        upper = self.bound_box.right_unit
         out_pins = []
         for (inst, nx), (nout, _) in zip(inst_list, nout_arr_list):
             for col_idx in range(nx):
@@ -235,11 +236,10 @@ class RDACRow(TemplateBase):
                              for in_idx in range(nin)]
                     tr_idx_list = list(range(cnt, cnt + nin))
                     warrs = self.connect_matching_tracks(warrs, in_layer, tr_idx_list,
-                                                         unit_mode=True)
+                                                         track_upper=upper, unit_mode=True)
                     for idx, w in enumerate(warrs):
-                        self.add_pin(fmt % (pin_cnt + idx), w, show=show_pins)
+                        self.add_pin(fmt % (pin_cnt + idx), w, show=show_pins, edge_mode=1)
                         lower = min(lower, w.lower_unit)
-                        upper = max(upper, w.upper_unit)
                     cnt += nin + 1
                     pin_off += nin
                     pin_cnt += nin
@@ -268,3 +268,81 @@ class RDACRow(TemplateBase):
         self.reexport(inst.get_port('VSS', row=0, col=0), show=show_pins)
 
         return out_pins, fill_master
+
+
+class RDACArray(TemplateBase):
+    """An array of resistor ladder DACs.
+
+    Parameters
+    ----------
+    temp_db : TemplateDB
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs :
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        return self._sch_params
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        return dict(
+            nin0='number of select bits for mux level 0.',
+            nin1='number of select bits for mux level 1.',
+            nrow='number of rows.',
+            nout_list='list of number of outputs for each DAC in a row.',
+            res_params='resistor ladder parameters.',
+            mux_params='passgate mux parameters.',
+            fill_config='Fill configuration dictionary.',
+            top_layer='top layer ID.',
+            num_vdd='Number of VDD-referenced outputs.',
+            fill_orient_mode='Fill block orientation mode.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            top_layer=None,
+            num_vdd=0,
+            fill_orient_mode=0,
+            show_pins=True,
+        )
+
+    def draw_layout(self):
+        # type: () -> None
+        nrow = self.params['nrow']
+        fill_orient_mode = self.params['fill_orient_mode']
+
+        if nrow != 2:
+            # TODO: fix this
+            raise ValueError('Only support nrow = 2.')
+
+        params = self.params.copy()
+        params['show_pins'] = False
+        master0 = self.new_template(params=params, temp_cls=RDACRow)
+        params['fill_orient_mode'] = fill_orient_mode ^ 2
+        master1 = self.new_template(params=params, temp_cls=RDACRow)
+
+        inst0 = self.add_instance(master0, 'X0', loc=(0, 0), unit_mode=True)
+        y0 = inst0.bound_box.top_unit * 2
+        inst1 = self.add_instance(master1, 'X1', loc=(0, y0), orient='MX', unit_mode=True)
+
+        bnd_box = inst0.bound_box.merge(inst1.bound_box)
+        self.set_size_from_bound_box(master0.top_layer, bnd_box)
+        self.array_box = bnd_box
