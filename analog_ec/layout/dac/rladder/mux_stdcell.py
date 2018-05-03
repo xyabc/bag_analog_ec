@@ -474,7 +474,7 @@ class RLadderMux(StdCellBase):
 
         # find row decoder location so input wires don't collide.
         tmp_port = row_master.get_port('in<%d>' % (row_nbits - 1))
-        rdec_in_pin = tmp_port.transform(self.grid, orient='MY').get_pins()[0]
+        rdec_in_pin = tmp_port.transform(self.grid, orient='MY', unit_mode=True).get_pins()[0]
         rdec_in_layer = rdec_in_pin.layer_id
         rdec_in_tr = rdec_in_pin.track_id.base_index
         out_tr = buf_inst.get_port('outb<%d>' % col_nbits).get_pins()[0].track_id.base_index
