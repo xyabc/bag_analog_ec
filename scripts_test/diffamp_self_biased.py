@@ -21,4 +21,4 @@ if __name__ == '__main__':
 
     gds_lay_file = 'GF45RFSOI_gds_info.yaml'
     bprj.generate_cell(block_specs, DiffAmpSelfBiased, debug=True)
-    # bprj.generate_cell(block_specs, DiffAmpSelfBiased, use_cybagoa=True, debug=True)
+    # bprj.generate_cell(block_specs, DiffAmpSelfBiased, gen_sch=True, run_lvs=True, debug=True)
