@@ -52,11 +52,7 @@ class bag_analog_ec__high_pass(Module):
             # delete substrate pin
             self.remove_pin('VSS')
         elif sub_name != 'VSS':
-            if sub_name == 'VDD':
-                self.remove_pin('VSS')
-                self.delete_instance('XNCVDD')
-            else:
-                self.rename_pin('VSS', sub_name)
+            self.rename_pin('VSS', sub_name)
 
         # design dummy
         if ndum == 0:

@@ -1,6 +1,6 @@
 lib_name: bag_analog_ec
 cell_name: high_pass
-pins: [ "out", "in", "bias", "VSS", "VDD" ]
+pins: [ "out", "in", "bias", "VSS" ]
 instances:
   XRDUM:
     lib_name: BAG_prim
@@ -34,10 +34,6 @@ instances:
         direction: inputOutput
         net_name: "VSS"
         num_bits: 1
-  PIN8:
-    lib_name: basic
-    cell_name: iopin
-    instpins: {}
   PIN3:
     lib_name: basic
     cell_name: iopin
@@ -74,14 +70,6 @@ instances:
     lib_name: basic
     cell_name: ipin
     instpins: {}
-  XNCVDD:
-    lib_name: basic
-    cell_name: noConn
-    instpins:
-      noConn:
-        direction: inputOutput
-        net_name: "VDD"
-        num_bits: 1
   XNC0:
     lib_name: basic
     cell_name: noConn
