@@ -686,3 +686,82 @@ class HighPassArrayCore(ResArrayBase):
 
         scale = self.grid.resolution * self.grid.layout_unit
         return port, (lay_id, width * scale, width * scale)
+
+
+class HighPassArrayTop(SubstrateWrapper):
+    """A differential RC high-pass filter with substrate contact.
+
+    Parameters
+    ----------
+    temp_db : TemplateDB
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        SubstrateWrapper.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        return dict(
+            w='unit resistor width, in meters.',
+            h_unit='total height, in resolution units.',
+            sub_w='Substrate width.',
+            sub_lch='Substrate channel length.',
+            sub_type='the substrate type.',
+            threshold='the substrate threshold flavor.',
+            top_layer='The top layer ID',
+            narr='Number of high-pass filters.',
+            nser='number of resistors in series in a branch.',
+            ndum='number of dummy resistors.',
+            res_type='Resistor intent',
+            res_options='Configuration dictionary for ResArrayBase.',
+            cap_spx='Capacitor horizontal separation, in resolution units.',
+            sub_tr_w='substrate track width in number of tracks.  None for default.',
+            end_mode='substrate end mode flag.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            res_type='standard',
+            res_options=None,
+            cap_spx=0,
+            sub_tr_w=None,
+            end_mode=15,
+            show_pins=True,
+        )
+
+    def draw_layout(self):
+        h_unit = self.params['h_unit']
+        sub_w = self.params['sub_w']
+        sub_lch = self.params['sub_lch']
+        sub_type = self.params['sub_type']
+        threshold = self.params['threshold']
+        top_layer = self.params['top_layer']
+        sub_tr_w = self.params['sub_tr_w']
+        end_mode = self.params['end_mode']
+        show_pins = self.params['show_pins']
+
+        # compute substrate contact height, subtract from h_unit
+        bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
+        h_subb = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                                           threshold, end_mode=bot_end_mode, is_passive=True)
+
+        params = self.params.copy()
+        params['h_unit'] = h_unit - h_subb
+        self.draw_layout_helper(HighPassArrayCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
+                                threshold, show_pins, end_mode=end_mode, is_passive=True,
+                                bot_only=True)
