@@ -536,26 +536,56 @@ class HighPassArrayCore(ResArrayBase):
             if self.grid.get_direction(lay) == 'x':
                 cap_spx = max(cap_spx, self.grid.get_line_end_space(lay, 1, unit_mode=True))
 
-        # connect resistors
-        tmp = self._connect_resistors(narr, nser, ndum, cap_spx)
-        bias_list, rout_list, sup_list, cap_x_list = tmp
-        clk_list, cout_list = self._draw_mom_cap(narr, cap_x_list, bot_layer, top_layer)
+        # connect resistors and draw MOM caps
+        tmp = self._connect_resistors(narr, nser, ndum, cap_spx, show_pins)
+        rout_list, cap_x_list = tmp
+        tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, show_pins)
+        cout_list, clk_list, ores_info, cres_info = tmp
 
-    def _connect_resistors(self, narr, nser, ndum, cap_spx):
+        # connect bias resistor to cap
+        for rout, cout in zip(rout_list, cout_list):
+            self.connect_to_track_wires(rout, cout)
+
+        # set schematic parameters
+        self._sch_params = dict(
+            out_res_info=ores_info,
+            clk_res_info=cres_info,
+        )
+
+    def _connect_supplies(self, supl_list, supr_list, show_pins):
+        vm_layer = self.bot_layer_id + 1
+        xm_layer = vm_layer + 1
+        for sup_list, mode in ((supl_list, -1), (supr_list, 1)):
+            xc = sup_list[0].middle_unit
+            vm_tr = self.grid.coord_to_nearest_track(vm_layer, xc, half_track=True, mode=mode,
+                                                     unit_mode=True)
+            sup = self.connect_to_tracks(sup_list, TrackID(vm_layer, vm_tr))
+            xm_tr = self.grid.coord_to_nearest_track(xm_layer, sup.middle_unit, half_track=True,
+                                                     unit_mode=True)
+            sup = self.connect_to_tracks(sup, TrackID(xm_layer, xm_tr), min_len_mode=mode)
+            self.add_pin('VSS', sup, label='VSS:', show=show_pins)
+
+    def _connect_resistors(self, narr, nser, ndum, cap_spx, show_pins):
         nx = 2 * ndum + narr * nser
         hm_layer = self.bot_layer_id
         vm_layer = hm_layer + 1
 
-        sup_list = []
+        # connect dummies
+        supl_list = []
+        supr_list = []
         for idx in range(ndum):
-            sup_list.extend(self.get_res_ports(0, idx))
-            sup_list.extend(self.get_res_ports(0, nx - 1 - idx))
+            supl_list.extend(self.get_res_ports(0, idx))
+            supr_list.extend(self.get_res_ports(0, nx - 1 - idx))
+        supl_list = self.connect_wires(supl_list)
+        supr_list = self.connect_wires(supr_list)
+        self._connect_supplies(supl_list, supr_list, show_pins)
 
+        # get line-end margin so we can know capacitor horizontal spacing
         hm_sp_le = self.grid.get_line_end_space(hm_layer, 1, unit_mode=True)
         hm_vext = self.grid.get_via_extensions(hm_layer, 1, 1, unit_mode=True)[0]
         hm_margin = hm_sp_le + hm_vext
 
-        bias_list = []
+        # get capacitor X interval, connect resistors, and get ports
         out_list = []
         cap_x_list = []
         cap_spx2 = cap_spx // 2
@@ -591,16 +621,12 @@ class HighPassArrayCore(ResArrayBase):
                 cap_xr = xr - cap_spx2
 
             cap_x_list.append((cap_xl, cap_xr))
-            bias_list.append(self.connect_to_tracks(bias, TrackID(vm_layer, bias_tr),
-                                                    min_len_mode=1))
+            bias = self.connect_to_tracks(bias, TrackID(vm_layer, bias_tr), min_len_mode=1)
+            self.add_pin('bias<%d>' % res_idx, bias, show=show_pins)
 
-        for res_idx in range(narr):
-            self.add_pin('bias', bias_list[res_idx], show=True)
-            self.add_pin('out', out_list[res_idx], show=True)
+        return out_list, cap_x_list
 
-        return bias_list, out_list, sup_list, cap_x_list
-
-    def _draw_mom_cap(self, narr, cap_x_list, bot_layer, top_layer):
+    def _draw_mom_cap(self, cap_x_list, bot_layer, top_layer, show_pins):
         grid = self.grid
         res = grid.resolution
 
@@ -614,21 +640,37 @@ class HighPassArrayCore(ResArrayBase):
 
         clk_list = []
         out_list = []
-        port_parity = {bot_layer: (1, 0), top_layer: (1, 0)}
+        out_res_info = clk_res_info = None
         for cap_idx, (cap_xl, cap_xr) in enumerate(cap_x_list):
             cap_box = BBox(cap_xl, cap_yb, cap_xr, cap_yt, res, unit_mode=True)
+            parity = cap_idx % 2
+            port_par = (parity, 1 - parity)
             ports = self.add_mom_cap(cap_box, bot_layer, num_layer,
-                                     port_parity=port_parity)
-            if cap_idx % 2 == 0:
-                clk_list.append(ports[top_layer][0])
-                out_list.append(ports[bot_layer][1])
+                                     port_parity={bot_layer: port_par, top_layer: port_par})
+            if parity == 0:
+                clk = ports[top_layer][1 - parity][0]
+                out = ports[bot_layer][parity][0]
             else:
-                clk_list.append(ports[top_layer][1])
-                out_list.append(ports[bot_layer][0])
+                clk = ports[top_layer][parity][0]
+                out = ports[bot_layer][1 - parity][0]
 
-        for cap_idx in range(narr):
-            self.add_pin('clk', clk_list[cap_idx], show=True)
-            self.add_pin('out', out_list[cap_idx], show=True)
+            out_list.append(out)
+            # draw output metal resistor and port
+            out_port, out_res_info = self._add_metal_res(out)
+            self.add_pin('out<%d>' % cap_idx, out_port, show=show_pins)
+            # draw clock metal resistor and port
+            clk_port, clk_res_info = self._add_metal_res(clk)
+            clk_list.append(clk_port)
 
         # return ports
-        return clk_list, out_list
+        return out_list, clk_list, out_res_info, clk_res_info
+
+    def _add_metal_res(self, warr):
+        tid = warr.track_id
+        tidx = tid.base_index
+        lay_id = tid.layer_id
+        upper = warr.upper_unit
+        width = self.grid.get_track_width(lay_id, tid.width, unit_mode=True)
+        self.add_res_metal_warr(lay_id, tidx, upper, upper + width, unit_mode=True)
+        port = self.add_wires(lay_id, tidx, upper + width, upper + 2 * width, unit_mode=True)
+        return port, (lay_id, width, width)
