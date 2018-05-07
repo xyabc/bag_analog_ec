@@ -4,7 +4,7 @@ import yaml
 
 from bag.core import BagProject
 
-from analog_ec.layout.passives.filter.highpass import HighPassArrayTop
+from analog_ec.layout.passives.filter.highpass import HighPassArrayClk
 
 
 if __name__ == '__main__':
@@ -20,5 +20,5 @@ if __name__ == '__main__':
         print('loading BAG project')
         bprj = local_dict['bprj']
 
-    bprj.generate_cell(block_specs, HighPassArrayTop, debug=True)
-    # bprj.generate_cell(block_specs, HighPassArrayCore, gen_sch=True, run_lvs=True, debug=True)
+    bprj.generate_cell(block_specs, HighPassArrayClk, debug=True)
+    # bprj.generate_cell(block_specs, HighPassArrayClk, gen_sch=True, run_lvs=True, debug=True)

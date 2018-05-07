@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Dict, Set, Any
 
 from bag.util.search import BinaryIterator
 from bag.layout.util import BBox
-from bag.layout.routing import TrackID
+from bag.layout.routing.base import TrackID, TrackManager
+from bag.layout.template import TemplateBase
 
 from abs_templates_ec.resistor.core import ResArrayBase, ResArrayBaseInfo
 
@@ -23,7 +24,7 @@ class HighPassDiffCore(ResArrayBase):
     Parameters
     ----------
     temp_db : :class:`bag.layout.template.TemplateDB`
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : Dict[str, Any]
@@ -424,7 +425,7 @@ class HighPassArrayCore(ResArrayBase):
     Parameters
     ----------
     temp_db : :class:`bag.layout.template.TemplateDB`
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : Dict[str, Any]
@@ -529,9 +530,7 @@ class HighPassArrayCore(ResArrayBase):
                         half_blk_y=True, min_height=h_unit)
 
         # get cap settings
-        num_layer = 3
         bot_layer = self.bot_layer_id + 1
-        top_layer = bot_layer + num_layer - 1
         for lay in range(bot_layer, top_layer + 1):
             if self.grid.get_direction(lay) == 'x':
                 cap_spx = max(cap_spx, self.grid.get_line_end_space(lay, 1, unit_mode=True))
@@ -555,7 +554,7 @@ class HighPassArrayCore(ResArrayBase):
             nser=nser,
             ndum=ndum,
             res_out_info=ores_info,
-            res_clk_info=cres_info,
+            res_in_info=cres_info,
         )
 
     def _connect_supplies(self, supl_list, supr_list, show_pins):
@@ -645,7 +644,7 @@ class HighPassArrayCore(ResArrayBase):
         num_layer = top_layer - bot_layer + 1
 
         out_list = []
-        out_res_info = clk_res_info = None
+        out_res_info = in_res_info = None
         for cap_idx, (cap_xl, cap_xr) in enumerate(cap_x_list):
             cap_box = BBox(cap_xl, cap_yb, cap_xr, cap_yt, res, unit_mode=True)
             parity = cap_idx % 2
@@ -653,10 +652,10 @@ class HighPassArrayCore(ResArrayBase):
             ports = self.add_mom_cap(cap_box, bot_layer, num_layer,
                                      port_parity={bot_layer: port_par, top_layer: port_par})
             if parity == 0:
-                clk = ports[top_layer][1 - parity][0]
+                warr_in = ports[top_layer][1 - parity][0]
                 out = ports[bot_layer][parity][0]
             else:
-                clk = ports[top_layer][parity][0]
+                warr_in = ports[top_layer][parity][0]
                 out = ports[bot_layer][1 - parity][0]
 
             out_list.append(out)
@@ -664,11 +663,11 @@ class HighPassArrayCore(ResArrayBase):
             out_port, out_res_info = self._add_metal_res(out, go_up=True)
             self.add_pin('out<%d>' % cap_idx, out_port, show=show_pins)
             # draw clock metal resistor and port
-            clk_port, clk_res_info = self._add_metal_res(clk, go_up=False)
-            self.add_pin('clk<%d>' % cap_idx, clk_port, show=show_pins)
+            in_port, in_res_info = self._add_metal_res(warr_in, go_up=False)
+            self.add_pin('in<%d>' % cap_idx, in_port, show=show_pins)
 
         # return ports
-        return out_list, out_res_info, clk_res_info
+        return out_list, out_res_info, in_res_info
 
     def _add_metal_res(self, warr, go_up=True):
         tid = warr.track_id
@@ -688,8 +687,117 @@ class HighPassArrayCore(ResArrayBase):
         return port, (lay_id, width * scale, width * scale)
 
 
-class HighPassArrayTop(SubstrateWrapper):
-    """A differential RC high-pass filter with substrate contact.
+class HighPassArrayClkCore(TemplateBase):
+    """An array of clock RC high-pass filters.
+
+    Parameters
+    ----------
+    temp_db : :class:`bag.layout.template.TemplateDB`
+        the template database.
+    lib_name : str
+        the layout library name.
+    params : Dict[str, Any]
+        the parameter values.
+    used_names : Set[str]
+        a set of already used cell names.
+    **kwargs :
+        dictionary of optional parameters.  See documentation of
+        :class:`bag.layout.template.TemplateBase` for details.
+    """
+
+    def __init__(self, temp_db, lib_name, params, used_names, **kwargs):
+        # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
+        TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
+        self._sch_params = None
+
+    @property
+    def sch_params(self):
+        # type: () -> Dict[str, Any]
+        return self._sch_params
+
+    @classmethod
+    def get_params_info(cls):
+        # type: () -> Dict[str, str]
+        return dict(
+            w='unit resistor width, in meters.',
+            h_unit='total height, in resolution units.',
+            sub_type='the substrate type.',
+            threshold='the substrate threshold flavor.',
+            top_layer='The top layer ID',
+            narr='Number of high-pass filters.',
+            nser='number of resistors in series in a branch.',
+            ndum='number of dummy resistors.',
+            tr_widths='track widths dictionary.',
+            tr_spaces='track spacings dictionary.',
+            res_type='Resistor intent',
+            res_options='Configuration dictionary for ResArrayBase.',
+            cap_spx='Capacitor horizontal separation, in resolution units.',
+            half_blk_x='True to allow for half horizontal blocks.',
+            show_pins='True to show pins.',
+        )
+
+    @classmethod
+    def get_default_param_values(cls):
+        # type: () -> Dict[str, Any]
+        return dict(
+            res_type='standard',
+            res_options=None,
+            cap_spx=0,
+            half_blk_x=True,
+            show_pins=True,
+        )
+
+    def draw_layout(self):
+        top_layer = self.params['top_layer']
+        narr = self.params['narr']
+        tr_widths = self.params['tr_widths']
+        tr_spaces = self.params['tr_spaces']
+        show_pins = self.params['show_pins']
+
+        params = self.params.copy()
+        params['show_pins'] = False
+        master = self.new_template(params=params, temp_cls=HighPassArrayCore)
+
+        tr_manager = TrackManager(self.grid, tr_widths, tr_spaces, half_space=True)
+        xm_layer = top_layer + 1
+        xm_w = tr_manager.get_width(xm_layer, 'clk')
+        ntr, locs = tr_manager.place_wires(xm_layer, ['clk', 'clk'])
+
+        blk_w, blk_h = self.grid.get_block_size(top_layer, unit_mode=True)
+        y0 = ntr * self.grid.get_track_pitch(xm_layer, unit_mode=True)
+        y0 = -(-y0 // blk_h) * blk_h
+
+        inst = self.add_instance(master, 'XARR', loc=(0, y0), unit_mode=True)
+        bnd_box = inst.bound_box.extend(y=0, unit_mode=True)
+        self.set_size_from_bound_box(xm_layer, bnd_box, round_up=True)
+        self.array_box = bnd_box
+        self.add_cell_boundary(self.bound_box)
+
+        # re-export/connect clocks
+        self.reexport(inst.get_port('VSS'), label='VSS:', show=show_pins)
+        pidx = locs[0]
+        nidx = locs[1]
+        clkp_list = []
+        clkn_list = []
+        for idx in range(narr):
+            suf = '<%d>' % idx
+            self.reexport(inst.get_port('bias' + suf), show=show_pins)
+            self.reexport(inst.get_port('out' + suf), show=show_pins)
+            parity = idx % 4
+            if parity == 0 or parity == 3:
+                clkp_list.append(inst.get_pin('in' + suf))
+            else:
+                clkn_list.append(inst.get_pin('in' + suf))
+        clkp, clkn = self.connect_differential_tracks(clkp_list, clkn_list, xm_layer, pidx, nidx,
+                                                      width=xm_w)
+        self.add_pin('clkp', clkp, show=show_pins)
+        self.add_pin('clkn', clkn, show=show_pins)
+
+        self._sch_params = master.sch_params
+
+
+class HighPassArrayClk(SubstrateWrapper):
+    """A wrapper with substrate contact around HighPassArrayClkCore
 
     Parameters
     ----------
@@ -724,6 +832,8 @@ class HighPassArrayTop(SubstrateWrapper):
             narr='Number of high-pass filters.',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            tr_widths='track widths dictionary.',
+            tr_spaces='track spacings dictionary.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
@@ -757,11 +867,11 @@ class HighPassArrayTop(SubstrateWrapper):
 
         # compute substrate contact height, subtract from h_unit
         bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
-        h_subb = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+        h_subb = self.get_substrate_height(self.grid, top_layer + 1, sub_lch, sub_w, sub_type,
                                            threshold, end_mode=bot_end_mode, is_passive=True)
 
         params = self.params.copy()
         params['h_unit'] = h_unit - h_subb
-        self.draw_layout_helper(HighPassArrayCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
+        self.draw_layout_helper(HighPassArrayClkCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
                                 bot_only=True)
