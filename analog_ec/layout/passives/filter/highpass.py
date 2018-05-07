@@ -540,7 +540,7 @@ class HighPassArrayCore(ResArrayBase):
         tmp = self._connect_resistors(narr, nser, ndum, cap_spx, show_pins)
         rout_list, cap_x_list = tmp
         tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, show_pins)
-        cout_list, clk_list, ores_info, cres_info = tmp
+        cout_list, ores_info, cres_info = tmp
 
         # connect bias resistor to cap
         for rout, cout in zip(rout_list, cout_list):
@@ -548,8 +548,14 @@ class HighPassArrayCore(ResArrayBase):
 
         # set schematic parameters
         self._sch_params = dict(
-            out_res_info=ores_info,
-            clk_res_info=cres_info,
+            l=l_unit * lay_unit * res,
+            w=w,
+            intent=res_type,
+            narr=narr,
+            nser=nser,
+            ndum=ndum,
+            res_out_info=ores_info,
+            res_clk_info=cres_info,
         )
 
     def _connect_supplies(self, supl_list, supr_list, show_pins):
@@ -638,7 +644,6 @@ class HighPassArrayCore(ResArrayBase):
         # draw MOM cap
         num_layer = top_layer - bot_layer + 1
 
-        clk_list = []
         out_list = []
         out_res_info = clk_res_info = None
         for cap_idx, (cap_xl, cap_xr) in enumerate(cap_x_list):
@@ -656,21 +661,28 @@ class HighPassArrayCore(ResArrayBase):
 
             out_list.append(out)
             # draw output metal resistor and port
-            out_port, out_res_info = self._add_metal_res(out)
+            out_port, out_res_info = self._add_metal_res(out, go_up=True)
             self.add_pin('out<%d>' % cap_idx, out_port, show=show_pins)
             # draw clock metal resistor and port
-            clk_port, clk_res_info = self._add_metal_res(clk)
-            clk_list.append(clk_port)
+            clk_port, clk_res_info = self._add_metal_res(clk, go_up=False)
+            self.add_pin('clk<%d>' % cap_idx, clk_port, show=show_pins)
 
         # return ports
-        return out_list, clk_list, out_res_info, clk_res_info
+        return out_list, out_res_info, clk_res_info
 
-    def _add_metal_res(self, warr):
+    def _add_metal_res(self, warr, go_up=True):
         tid = warr.track_id
         tidx = tid.base_index
         lay_id = tid.layer_id
-        upper = warr.upper_unit
         width = self.grid.get_track_width(lay_id, tid.width, unit_mode=True)
-        self.add_res_metal_warr(lay_id, tidx, upper, upper + width, unit_mode=True)
-        port = self.add_wires(lay_id, tidx, upper + width, upper + 2 * width, unit_mode=True)
-        return port, (lay_id, width, width)
+        if go_up:
+            coord = warr.upper_unit
+            self.add_res_metal_warr(lay_id, tidx, coord, coord + width, unit_mode=True)
+            port = self.add_wires(lay_id, tidx, coord + width, coord + 2 * width, unit_mode=True)
+        else:
+            coord = warr.lower_unit
+            self.add_res_metal_warr(lay_id, tidx, coord - width, coord, unit_mode=True)
+            port = self.add_wires(lay_id, tidx, coord - 2 * width, coord - width, unit_mode=True)
+
+        scale = self.grid.resolution * self.grid.layout_unit
+        return port, (lay_id, width * scale, width * scale)
