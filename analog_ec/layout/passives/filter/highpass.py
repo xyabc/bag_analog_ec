@@ -59,6 +59,7 @@ class HighPassDiffCore(ResArrayBase):
             ndum='number of dummy resistors.',
             in_tr_info='Input track info.',
             out_tr_info='Output track info.',
+            bias_idx='Bias port index.',
             vdd_tr_info='Supply track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
@@ -73,6 +74,7 @@ class HighPassDiffCore(ResArrayBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            bias_idx=0,
             vdd_tr_info=None,
             res_type='standard',
             res_options=None,
@@ -94,6 +96,7 @@ class HighPassDiffCore(ResArrayBase):
         ndum = self.params['ndum']
         in_tr_info = self.params['in_tr_info']
         out_tr_info = self.params['out_tr_info']
+        bias_idx = self.params['bias_idx']
         vdd_tr_info = self.params['vdd_tr_info']
         res_type = self.params['res_type']
         res_options = self.params['res_options']
@@ -109,12 +112,13 @@ class HighPassDiffCore(ResArrayBase):
 
         if res_options is None:
             my_options = dict(well_end_mode=2)
+
         else:
             my_options = res_options.copy()
             my_options['well_end_mode'] = 2
         # find resistor length
         info = ResArrayBaseInfo(self.grid, sub_type, threshold, top_layer=top_layer,
-                                res_type=res_type, ext_dir='y', options=my_options,
+                                res_type=res_type, grid_type=None, ext_dir='y', options=my_options,
                                 connect_up=True, half_blk_x=half_blk_x, half_blk_y=True)
 
         lmin, lmax = info.get_res_length_bounds()
@@ -136,12 +140,8 @@ class HighPassDiffCore(ResArrayBase):
                         options=my_options, connect_up=True, half_blk_x=half_blk_x,
                         half_blk_y=True, min_height=h_unit)
         # connect resistors
-        vdd, biasp, biasn, outp_h, outn_h = self.connect_resistors(ndum, nser)
+        vdd, biasp, biasn, outp_h, outn_h, xl, xr = self.connect_resistors(ndum, nser, bias_idx)
         # draw MOM cap
-        xl = self.grid.get_wire_bounds(biasp.layer_id, biasp.track_id.base_index,
-                                       width=biasp.track_id.width, unit_mode=True)[1]
-        xr = self.grid.get_wire_bounds(biasn.layer_id, biasn.track_id.base_index,
-                                       width=biasn.track_id.width, unit_mode=True)[0]
         caplp, capln, caprp, caprn = self.draw_mom_cap(nser, xl, xr, cap_spx, cap_spy, cap_margin)
 
         # connect resistors to MOM cap, and draw metal resistors
@@ -177,8 +177,9 @@ class HighPassDiffCore(ResArrayBase):
                               width=tr_w, unit_mode=True)
         # connect/export vdd
         if vdd_tr_info is None:
-            self.add_pin('VDD', vdd, label='VDD:', show=show_pins)
+            self.add_pin('VDD_vm', vdd, label='VDD:', show=show_pins)
         else:
+            self.add_pin('VDD_vm', vdd, label='VDD', show=show_pins)
             for tr_info in vdd_tr_info:
                 tid = TrackID(hm_layer, tr_info[0], width=tr_info[1])
                 self.add_pin('VDD', self.connect_to_tracks(vdd, tid), show=show_pins)
@@ -200,9 +201,11 @@ class HighPassDiffCore(ResArrayBase):
             res_out_info=(hm_layer, res_out_w * res * lay_unit, res_out_w * res * lay_unit),
         )
 
-    def connect_resistors(self, ndum, nser):
+    def connect_resistors(self, ndum, nser, bias_idx):
         nx = 2 * (nser + ndum)
-        biasp, biasn, outp, outn = [], [], None, None
+        biasp = []
+        biasn = []
+        outp = outn = None
         for idx in range(ndum):
             biasp.extend(self.get_res_ports(0, idx))
             biasn.extend(self.get_res_ports(0, nx - 1 - idx))
@@ -235,14 +238,16 @@ class HighPassDiffCore(ResArrayBase):
                                        mode=1, unit_mode=True)
         t1 = self.grid.find_next_track(vm_layer, self.bound_box.right_unit, half_track=True,
                                        mode=-1, unit_mode=True)
-        bp_tid = TrackID(vm_layer, t0 + 1)
-        bn_tid = TrackID(vm_layer, t1 - 1)
+        bp_tid = TrackID(vm_layer, t0 + bias_idx + 1)
+        bn_tid = TrackID(vm_layer, t1 - bias_idx - 1)
         biasp = self.connect_to_tracks(biasp, bp_tid)
         biasn = self.connect_to_tracks(biasn, bn_tid)
         vdd = self.add_wires(vm_layer, t0, biasp.lower_unit, biasp.upper_unit,
                              num=2, pitch=t1 - t0, unit_mode=True)
+        xl = self.grid.get_wire_bounds(vm_layer, t0 + 2, unit_mode=True)[1]
+        xr = self.grid.get_wire_bounds(vm_layer, t1 - 2, unit_mode=True)[0]
 
-        return vdd, biasp, biasn, outp, outn
+        return vdd, biasp, biasn, outp, outn, xl, xr
 
     def draw_mom_cap(self, nser, xl, xr, cap_spx, cap_spy, cap_margin):
         res = self.grid.resolution
@@ -352,6 +357,7 @@ class HighPassDiff(SubstrateWrapper):
             ndum='number of dummy resistors.',
             in_tr_info='Input track info.',
             out_tr_info='Output track info.',
+            bias_idx='Bias port index.',
             vdd_tr_info='Supply track info.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
@@ -368,6 +374,7 @@ class HighPassDiff(SubstrateWrapper):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
+            bias_idx=0,
             vdd_tr_info=None,
             res_type='standard',
             res_options=None,
@@ -462,6 +469,7 @@ class HighPassArrayCore(ResArrayBase):
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
+            cap_spy='Capacitor vertical margin, in resolution units.',
             half_blk_x='True to allow for half horizontal blocks.',
             show_pins='True to show pins.',
         )
@@ -473,6 +481,7 @@ class HighPassArrayCore(ResArrayBase):
             res_type='standard',
             res_options=None,
             cap_spx=0,
+            cap_spy=0,
             half_blk_x=True,
             show_pins=True,
         )
@@ -490,6 +499,7 @@ class HighPassArrayCore(ResArrayBase):
         res_type = self.params['res_type']
         res_options = self.params['res_options']
         cap_spx = self.params['cap_spx']
+        cap_spy = self.params['cap_spy']
         half_blk_x = self.params['half_blk_x']
         show_pins = self.params['show_pins']
 
@@ -538,7 +548,7 @@ class HighPassArrayCore(ResArrayBase):
         # connect resistors and draw MOM caps
         tmp = self._connect_resistors(narr, nser, ndum, cap_spx, show_pins)
         rout_list, cap_x_list = tmp
-        tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, show_pins)
+        tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, cap_spy, show_pins)
         cout_list, ores_info, cres_info = tmp
 
         # connect bias resistor to cap
@@ -631,14 +641,14 @@ class HighPassArrayCore(ResArrayBase):
 
         return out_list, cap_x_list
 
-    def _draw_mom_cap(self, cap_x_list, bot_layer, top_layer, show_pins):
+    def _draw_mom_cap(self, cap_x_list, bot_layer, top_layer, cap_spy, show_pins):
         grid = self.grid
         res = grid.resolution
 
         # get port location
         bnd_box = self.bound_box
-        cap_yb = bnd_box.bottom_unit
-        cap_yt = bnd_box.top_unit
+        cap_yb = bnd_box.bottom_unit + cap_spy
+        cap_yt = bnd_box.top_unit - cap_spy
 
         # draw MOM cap
         num_layer = top_layer - bot_layer + 1
@@ -732,6 +742,7 @@ class HighPassArrayClkCore(TemplateBase):
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
+            cap_spy='Capacitor vertical margin, in resolution units.',
             half_blk_x='True to allow for half horizontal blocks.',
             show_pins='True to show pins.',
         )
@@ -743,6 +754,7 @@ class HighPassArrayClkCore(TemplateBase):
             res_type='standard',
             res_options=None,
             cap_spx=0,
+            cap_spy=0,
             half_blk_x=True,
             show_pins=True,
         )
@@ -837,6 +849,7 @@ class HighPassArrayClk(SubstrateWrapper):
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
+            cap_spy='Capacitor vertical margin, in resolution units.',
             sub_tr_w='substrate track width in number of tracks.  None for default.',
             end_mode='substrate end mode flag.',
             show_pins='True to show pins.',
@@ -849,6 +862,7 @@ class HighPassArrayClk(SubstrateWrapper):
             res_type='standard',
             res_options=None,
             cap_spx=0,
+            cap_spy=0,
             sub_tr_w=None,
             end_mode=15,
             show_pins=True,
