@@ -4,7 +4,7 @@
 """This module defines an array of resistor ladder DACs.
 """
 
-from typing import TYPE_CHECKING, Dict, Set, Any
+from typing import TYPE_CHECKING, Dict, Set, Any, List
 
 from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
@@ -296,6 +296,12 @@ class RDACArray(TemplateBase):
     @property
     def sch_params(self):
         return self._sch_params
+
+    @classmethod
+    def get_cache_properties(cls):
+        # type: () -> List[str]
+        """Returns a list of properties to cache."""
+        return ['sch_params']
 
     @classmethod
     def get_params_info(cls):
