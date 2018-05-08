@@ -574,7 +574,7 @@ class HighPassArrayCore(ResArrayBase):
     def _connect_supplies(self, supl_list, supr_list, show_pins):
         vm_layer = self.bot_layer_id + 1
         xm_layer = vm_layer + 1
-        for sup_list, mode in ((supl_list, -1), (supr_list, 1)):
+        for sup_list, mode, name in ((supl_list, -1, 'VSSL'), (supr_list, 1, 'VSSR')):
             xc = sup_list[0].middle_unit
             vm_tr = self.grid.coord_to_nearest_track(vm_layer, xc, half_track=True, mode=mode,
                                                      unit_mode=True)
@@ -582,7 +582,7 @@ class HighPassArrayCore(ResArrayBase):
             xm_tr = self.grid.coord_to_nearest_track(xm_layer, sup.middle_unit, half_track=True,
                                                      unit_mode=True)
             sup = self.connect_to_tracks(sup, TrackID(xm_layer, xm_tr), min_len_mode=mode)
-            self.add_pin('VSS', sup, label='VSS:', show=show_pins)
+            self.add_pin(name, sup, label='VSS:', show=show_pins)
 
     def _connect_resistors(self, narr, nser, ndum, cap_spx, show_pins):
         nx = 2 * ndum + narr * nser
@@ -790,7 +790,8 @@ class HighPassArrayClkCore(TemplateBase):
         self.add_cell_boundary(self.bound_box)
 
         # re-export/connect clocks
-        self.reexport(inst.get_port('VSS'), label='VSS:', show=show_pins)
+        self.reexport(inst.get_port('VSSL'), label='VSS:', show=show_pins)
+        self.reexport(inst.get_port('VSSR'), label='VSS:', show=show_pins)
         pidx = locs[0]
         nidx = locs[1]
         clkp_list = []
