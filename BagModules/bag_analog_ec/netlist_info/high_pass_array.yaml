@@ -1,0 +1,48 @@
+lib_name: bag_analog_ec
+cell_name: high_pass_array
+pins: [ "VSS", "in<0>", "bias<0>", "out<0>" ]
+instances:
+  XDUM:
+    lib_name: bag_analog_ec
+    cell_name: res_dummy
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  XHP:
+    lib_name: bag_analog_ec
+    cell_name: high_pass
+    instpins:
+      VSS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      in:
+        direction: input
+        net_name: "in<0>"
+        num_bits: 1
+      bias:
+        direction: input
+        net_name: "bias<0>"
+        num_bits: 1
+      out:
+        direction: output
+        net_name: "out<0>"
+        num_bits: 1
+  PIN0:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}
+  PIN2:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN1:
+    lib_name: basic
+    cell_name: ipin
+    instpins: {}
+  PIN3:
+    lib_name: basic
+    cell_name: opin
+    instpins: {}

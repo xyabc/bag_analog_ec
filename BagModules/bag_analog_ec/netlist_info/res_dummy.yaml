@@ -1,0 +1,24 @@
+lib_name: bag_analog_ec
+cell_name: res_dummy
+pins: [ "VSS" ]
+instances:
+  RDUM:
+    lib_name: BAG_prim
+    cell_name: res_standard
+    instpins:
+      PLUS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      MINUS:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+      BULK:
+        direction: inputOutput
+        net_name: "VSS"
+        num_bits: 1
+  PIN3:
+    lib_name: basic
+    cell_name: iopin
+    instpins: {}

@@ -557,14 +557,18 @@ class HighPassArrayCore(ResArrayBase):
 
         # set schematic parameters
         self._sch_params = dict(
-            l=l_unit * lay_unit * res,
-            w=w,
-            intent=res_type,
             narr=narr,
-            nser=nser,
             ndum=ndum,
-            res_out_info=ores_info,
-            res_in_info=cres_info,
+            hp_params=dict(
+                l=l_unit * lay_unit * res,
+                w=w,
+                intent=res_type,
+                nser=nser,
+                ndum=0,
+                res_in_info=cres_info,
+                res_out_info=ores_info,
+                sub_name='VSS',
+            ),
         )
 
     def _connect_supplies(self, supl_list, supr_list, show_pins):
