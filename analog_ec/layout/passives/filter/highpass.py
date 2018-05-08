@@ -558,7 +558,7 @@ class HighPassArrayCore(ResArrayBase):
         # set schematic parameters
         self._sch_params = dict(
             narr=narr,
-            ndum=ndum,
+            ndum=ndum * 2,
             hp_params=dict(
                 l=l_unit * lay_unit * res,
                 w=w,
