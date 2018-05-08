@@ -57,6 +57,6 @@ class bag_analog_ec__res_dummy(Module):
             self.instances['RDUM'].design(w=w, l=l, intent=intent)
             if ndum > 1:
                 term_list = [dict(BULK=sub_name)] if rename_sub else None
-                self.array_instance('XRDUM', ['XRDUM<%d:0>' % (ndum - 1)], term_list=term_list)
+                self.array_instance('RDUM', ['RDUM<%d:0>' % (ndum - 1)], term_list=term_list)
             elif rename_sub:
-                self.reconnect_instance_terminal('XRDUM', 'BULK', sub_name)
+                self.reconnect_instance_terminal('RDUM', 'BULK', sub_name)
