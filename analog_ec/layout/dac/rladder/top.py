@@ -10,7 +10,8 @@ from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
-from abs_templates_ec.routing.bias import BiasShield, BiasShieldJoin, BiasShieldCrossing
+from abs_templates_ec.routing.bias import BiasShield, BiasShieldJoin, \
+    BiasShieldCrossing, BiasShieldEnd
 
 from .core import ResLadderDAC
 
@@ -553,15 +554,20 @@ class RDACArray(TemplateBase):
                 self.add_instance(master, loc=(vss_x, y0), unit_mode=True)
 
     def _compute_route_width(self, top_layer, vm_layer, num_vdd, num_vss, fill_config, bias_config):
+        grid = self.grid
+
+        hm_layer = vm_layer + 1
         if num_vdd == 0:
             vdd_w = 0
         else:
-            vdd_w = BiasShield.get_block_size(self.grid, vm_layer, bias_config, num_vdd)[0]
+            vdd_w = BiasShield.get_block_size(grid, vm_layer, bias_config, num_vdd)[0]
+            vdd_w += BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vdd)
         if num_vss == 0:
             vss_w = 0
         else:
             vss_w = BiasShield.get_block_size(self.grid, vm_layer, bias_config, num_vss)[0]
+            vss_w += BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vss)
 
-        fill_w = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)[0]
+        fill_w = grid.get_fill_size(top_layer, fill_config, unit_mode=True)[0]
         route_w = -(-(vdd_w + vss_w) // fill_w) * fill_w
         return route_w, vdd_w, vss_w
