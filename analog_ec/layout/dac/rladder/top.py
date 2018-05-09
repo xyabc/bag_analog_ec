@@ -4,13 +4,13 @@
 """This module defines an array of resistor ladder DACs.
 """
 
-from typing import TYPE_CHECKING, Dict, Set, Any, List
+from typing import TYPE_CHECKING, Dict, Set, Any, List, Tuple, Optional
 
 from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
-from abs_templates_ec.routing.bias import BiasShield
+from abs_templates_ec.routing.bias import BiasShield, BiasShieldJoin, BiasShieldCrossing
 
 from .core import ResLadderDAC
 
@@ -40,10 +40,29 @@ class RDACRow(TemplateBase):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
+        self._bias_layer = None
+        self._bias_info = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
+
+    @property
+    def bias_layer(self):
+        # type: () -> int
+        return self._bias_layer
+
+    @property
+    def bias_info(self):
+        # type: () -> List[int, Optional[Tuple[Any]]]
+        return self._bias_info
+
+    @classmethod
+    def get_cache_properties(cls):
+        # type: () -> List[str]
+        """Returns a list of properties to cache."""
+        return ['sch_params', 'bias_info']
 
     @classmethod
     def get_params_info(cls):
@@ -164,8 +183,9 @@ class RDACRow(TemplateBase):
                                            fill_config, show_pins, fill_orient_mode)
 
         # draw output bias bus
-        self._connect_output(io_layer, bias_config, out_pins, fm, num_vdd, num_vss, out_y0, out_y1,
-                             tot_h, blk_w, blk_h, show_pins, fill_orient_mode)
+        tmp = self._connect_output(io_layer, bias_config, out_pins, fm, num_vdd, num_vss, out_y0,
+                                   out_y1, tot_h, blk_w, blk_h, show_pins, fill_orient_mode)
+        self._bias_info = tmp
 
         self._sch_params = dict(
             nin0=nin0,
@@ -174,23 +194,28 @@ class RDACRow(TemplateBase):
             res_params=master0.sch_params['res_params'],
             mux_params=master0.sch_params['mux_params'],
         )
+        self._bias_layer = io_layer
 
     def _connect_output(self, io_layer, bias_config, out_pins, fill_master, num_vdd, num_vss,
                         y0, y1, ytop, blk_w, blk_h, show_pins, fill_orient_mode):
+        bias_info = [None, None]
         if num_vdd > 0:
             vdd_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[:num_vdd],
                                                     y0, tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vdd_info.tracks):
                 self.add_pin('out<%d>' % idx, tr, show=show_pins, edge_mode=-1)
             vdd_list = vdd_info.supplies
+            bias_info[1] = (num_vdd, vdd_info.p0, vdd_info.p1[1] - vdd_info.p0[1])
         else:
             vdd_list = None
+
         if num_vss > 0:
             vss_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[num_vdd:],
                                                     y1, tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vss_info.tracks):
                 self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins, edge_mode=-1)
             vss_list = vss_info.supplies
+            bias_info[0] = (num_vss, vss_info.p0, vss_info.p1[1] - vss_info.p0[1])
         else:
             vss_list = None
 
@@ -211,6 +236,8 @@ class RDACRow(TemplateBase):
             ridx = (y1 - y0) // blk_h
             vss_tid = inst.get_pin('VSS_b', row=ridx, col=0).track_id
             self.connect_to_tracks(vss_list, vss_tid)
+
+        return bias_info
 
     def _connect_input(self, inst_list, in_layer, tr0, nin, nout_tot, nout_arr_list, ny_input,
                        blk_w, blk_h, fill_config, show_pins, fill_orient_mode):
@@ -292,16 +319,23 @@ class RDACArray(TemplateBase):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
+        self._bias_info = None
 
     @property
     def sch_params(self):
+        # type: () -> Dict[str, Any]
         return self._sch_params
+
+    @property
+    def bias_info(self):
+        # type: () -> List[int, Optional[Tuple[Any]]]
+        return self._bias_info
 
     @classmethod
     def get_cache_properties(cls):
         # type: () -> List[str]
         """Returns a list of properties to cache."""
-        return ['sch_params']
+        return ['sch_params', 'bias_info']
 
     @classmethod
     def get_params_info(cls):
@@ -338,17 +372,27 @@ class RDACArray(TemplateBase):
         nout_list2 = self.params['nout_list2']
         num_vdd_list = self.params['num_vdd_list']
         fill_config = self.params['fill_config']
+        bias_config = self.params['bias_config']
         fill_orient_mode = self.params['fill_orient_mode']
         show_pins = self.params['show_pins']
+
+        # get number of VDD/VSS bias wires
+        num_vdd_tot = num_tot = 0
+        for num_vdd, nout_list in zip(num_vdd_list, nout_list2):
+            num_vdd_tot += num_vdd
+            num_tot += sum(nout_list)
+        num_vss_tot = num_tot - num_vdd_tot
 
         ycur = 0
         inst_list = []
         nout_arr_list = []
         fill_info_list = []
+        hm_bias_info_list = []
         params = self.params.copy()
         params['show_pins'] = False
         tot_box = BBox.get_invalid_bbox()
         top_layer = res_params = mux_params = blk_w = blk_h = None
+        vm_layer = route_w = vdd_w = vss_w = None
         for row_idx, (num_vdd, nout_list) in enumerate(zip(num_vdd_list, nout_list2)):
             if row_idx % 2 == 0:
                 orient = 'R0'
@@ -363,24 +407,43 @@ class RDACArray(TemplateBase):
             nout_arr_list.extend(master.sch_params['nout_arr_list'])
             if top_layer is None:
                 top_layer = master.top_layer
+                vm_layer = master.bias_layer - 1
                 res_params = master.sch_params['res_params']
                 mux_params = master.sch_params['mux_params']
                 blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
+                tmp = self._compute_route_width(top_layer, vm_layer, num_vdd_tot, num_vss_tot,
+                                                fill_config, bias_config)
+                route_w, vdd_w, vss_w = tmp
 
             ny = master.bound_box.height_unit // blk_h
-            fill_info_list.append((master.bound_box.right_unit, ycur, ny, cur_fo_mode))
+            cur_bias_info = master.bias_info
             if row_idx % 2 == 1:
                 ycur += master.bound_box.height_unit
-            inst = self.add_instance(master, 'X%d' % row_idx, loc=(0, ycur),
+                if cur_bias_info[0] is not None:
+                    num_vss, p0, dim = cur_bias_info[0]
+                    hm_bias_info_list.append((0, num_vss, ycur - p0[1] - dim))
+                if cur_bias_info[1] is not None:
+                    num_vdd, p0, dim = cur_bias_info[1]
+                    hm_bias_info_list.append((1, num_vdd, ycur - p0[1] - dim))
+            else:
+                if cur_bias_info[1] is not None:
+                    num_vdd, p0, dim = cur_bias_info[1]
+                    hm_bias_info_list.append((1, num_vdd, p0[1] + ycur))
+                if cur_bias_info[0] is not None:
+                    num_vss, p0, dim = cur_bias_info[0]
+                    hm_bias_info_list.append((0, num_vss, p0[1] + ycur))
+
+            inst = self.add_instance(master, 'X%d' % row_idx, loc=(route_w, ycur),
                                      orient=orient, unit_mode=True)
 
             inst_box = inst.bound_box
+            fill_info_list.append((inst_box.right_unit, ycur, ny, cur_fo_mode))
             tot_box = tot_box.merge(inst_box)
             ycur = tot_box.top_unit
             inst_list.append(inst)
 
+        self.array_box = tot_box = tot_box.extend(x=0, unit_mode=True)
         self.set_size_from_bound_box(top_layer, tot_box)
-        self.array_box = tot_box
         self.add_cell_boundary(tot_box)
         xr_tot = tot_box.right_unit
 
@@ -413,6 +476,10 @@ class RDACArray(TemplateBase):
                     in_cnt += 1
                 out_cnt += 1
 
+        # draw routes
+        self._join_bias_routes(vm_layer, route_w, vdd_w, vss_w, num_vdd_tot, num_vss_tot,
+                               hm_bias_info_list, bias_config)
+
         self.reexport(inst_list[0].get_port('VDD'), show=show_pins)
         self.reexport(inst_list[0].get_port('VSS'), show=show_pins)
 
@@ -424,3 +491,77 @@ class RDACArray(TemplateBase):
             mux_params=mux_params,
             io_name_list=io_name_list,
         )
+
+    def _join_bias_routes(self, vm_layer, route_w, vdd_w, vss_w, num_vdd_tot, num_vss_tot,
+                          hm_bias_info_list, bias_config):
+        vdd_x = 0
+        vss_x = vdd_w
+        vss_params = dict(
+                nwire=num_vss_tot,
+                width=1,
+                space_sig=0,
+            )
+        vdd_params = dict(
+                nwire=num_vdd_tot,
+                width=1,
+                space_sig=0,
+            )
+        for idx, (code, num, y0) in enumerate(hm_bias_info_list):
+            if code == 0:
+                bot_params = vss_params
+                x0 = vss_x
+            else:
+                bot_params = vdd_params
+                x0 = vdd_x
+
+            top_params = dict(
+                nwire=num,
+                width=1,
+                space_sig=0,
+            )
+            if idx == 0:
+                params = dict(
+                    bot_layer=vm_layer,
+                    bias_config=bias_config,
+                    bot_params=bot_params,
+                    top_params=top_params,
+                )
+                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
+                self.add_instance(master, loc=(x0, y0), unit_mode=True)
+            elif code == 1:
+                params = dict(
+                    bot_layer=vm_layer,
+                    bias_config=bias_config,
+                    bot_params=vdd_params,
+                    top_params=top_params,
+                    bot_open=True,
+                )
+                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
+                self.add_instance(master, loc=(vdd_x, y0), unit_mode=True)
+                params['bot_params'] = vss_params
+                master = self.new_template(params=params, temp_cls=BiasShieldCrossing)
+                self.add_instance(master, loc=(vss_x, y0), unit_mode=True)
+            else:
+                params = dict(
+                    bot_layer=vm_layer,
+                    bias_config=bias_config,
+                    bot_params=vss_params,
+                    top_params=top_params,
+                    bot_open=True,
+                )
+                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
+                self.add_instance(master, loc=(vss_x, y0), unit_mode=True)
+
+    def _compute_route_width(self, top_layer, vm_layer, num_vdd, num_vss, fill_config, bias_config):
+        if num_vdd == 0:
+            vdd_w = 0
+        else:
+            vdd_w = BiasShield.get_block_size(self.grid, vm_layer, bias_config, num_vdd)[0]
+        if num_vss == 0:
+            vss_w = 0
+        else:
+            vss_w = BiasShield.get_block_size(self.grid, vm_layer, bias_config, num_vss)[0]
+
+        fill_w = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)[0]
+        route_w = -(-(vdd_w + vss_w) // fill_w) * fill_w
+        return route_w, vdd_w, vss_w
