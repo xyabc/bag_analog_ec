@@ -201,8 +201,9 @@ class RDACRow(TemplateBase):
                         y0, y1, ytop, blk_w, blk_h, show_pins, fill_orient_mode):
         bias_info = [None, None]
         if num_vdd > 0:
-            vdd_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[:num_vdd],
-                                                    y0, tr_lower=0, lu_end_mode=1)
+            vdd_out = out_pins[:num_vdd]
+            vdd_info = BiasShield.connect_bias_shields(self, io_layer, bias_config, vdd_out, y0,
+                                                       tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vdd_info.tracks):
                 self.add_pin('out<%d>' % idx, tr, show=show_pins, edge_mode=-1)
             vdd_list = vdd_info.supplies
@@ -211,8 +212,9 @@ class RDACRow(TemplateBase):
             vdd_list = None
 
         if num_vss > 0:
-            vss_info = BiasShield.draw_bias_shields(self, io_layer, bias_config, out_pins[num_vdd:],
-                                                    y1, tr_lower=0, lu_end_mode=1)
+            vss_out = out_pins[num_vdd:]
+            vss_info = BiasShield.connect_bias_shields(self, io_layer, bias_config, vss_out, y1,
+                                                       tr_lower=0, lu_end_mode=1)
             for idx, tr in enumerate(vss_info.tracks):
                 self.add_pin('out<%d>' % (idx + num_vdd), tr, show=show_pins, edge_mode=-1)
             vss_list = vss_info.supplies
@@ -495,6 +497,8 @@ class RDACArray(TemplateBase):
 
     def _join_bias_routes(self, vm_layer, vdd_x, vss_x, xr, num_vdd_tot,
                           num_vss_tot, hm_bias_info_list, bias_config):
+        vdd_xl, vdd_xr = vdd_x
+        vss_xl, vss_xr = vss_x
         vss_params = dict(
                 nwire=num_vss_tot,
                 width=1,
@@ -514,13 +518,13 @@ class RDACArray(TemplateBase):
         for idx, (code, num, y0) in enumerate(hm_bias_info_list):
             if code == 0:
                 bot_params = vss_params
-                x0 = vss_x
+                x0 = vss_xl
                 if vss_y_prev is not None:
                     vss_intvs.append((vss_y_prev, y0))
                 vss_y_prev = y0
             else:
                 bot_params = vdd_params
-                x0 = vdd_x
+                x0 = vdd_xl
                 if vdd_y_prev is not None:
                     vdd_intvs.append((vdd_y_prev, y0))
                 if vss_y_prev is not None:
@@ -554,11 +558,11 @@ class RDACArray(TemplateBase):
                     bot_open=True,
                 )
                 master = self.new_template(params=params, temp_cls=BiasShieldJoin)
-                inst = self._add_inst_r180(master, vdd_x, y0)
+                inst = self._add_inst_r180(master, vdd_xl, y0)
                 params['bot_params'] = vss_params
                 vdd_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
                 master = self.new_template(params=params, temp_cls=BiasShieldCrossing)
-                inst = self._add_inst_r180(master, vss_x, y0)
+                inst = self._add_inst_r180(master, vss_xl, y0)
                 vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
             else:
                 params = dict(
@@ -569,8 +573,11 @@ class RDACArray(TemplateBase):
                     bot_open=True,
                 )
                 master = self.new_template(params=params, temp_cls=BiasShieldJoin)
-                inst = self._add_inst_r180(master, vss_x, y0)
+                inst = self._add_inst_r180(master, vss_xl, y0)
                 vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
+
+    def _add_bias_route(self):
+        pass
 
     def _add_inst_r180(self, master, x, y):
         box = master.array_box
@@ -582,16 +589,16 @@ class RDACArray(TemplateBase):
 
         hm_layer = vm_layer + 1
         if num_vdd == 0:
-            vdd_x = vdd_w = 0
+            vdd_xl = vdd_xr = 0
         else:
-            vdd_x = BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vdd)
-            vdd_w = vdd_x + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vdd)[0]
+            vdd_xl = BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vdd)
+            vdd_xr = vdd_xl + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vdd)[0]
         if num_vss == 0:
-            route_w = vss_x = vdd_w
+            vss_xr = vss_xl = vdd_xr
         else:
-            vss_x = vdd_w + BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vss)
-            route_w = vss_x + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vss)[0]
+            vss_xl = vdd_xr + BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vss)
+            vss_xr = vss_xl + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vss)[0]
 
         fill_w = grid.get_fill_size(top_layer, fill_config, unit_mode=True)[0]
-        route_w = -(-route_w // fill_w) * fill_w
-        return route_w, vdd_x, vss_x
+        route_w = -(-vss_xr // fill_w) * fill_w
+        return route_w, (vdd_xl, vdd_xr), (vss_xl, vss_xr)
