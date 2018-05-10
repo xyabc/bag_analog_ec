@@ -6,15 +6,11 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any, List, Tuple, Optional
 
-from itertools import islice
-
 from bag.layout.util import BBox
-from bag.layout.routing.base import TrackID
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
-from abs_templates_ec.routing.bias import BiasShield, BiasShieldJoin, \
-    BiasShieldCrossing, BiasShieldEnd
+from abs_templates_ec.routing.bias import BiasShield, join_bias_vroutes, compute_vroute_width
 
 from .core import ResLadderDAC
 
@@ -417,8 +413,8 @@ class RDACArray(TemplateBase):
                 res_params = master.sch_params['res_params']
                 mux_params = master.sch_params['mux_params']
                 blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
-                tmp = self._compute_route_width(top_layer, vm_layer, num_vdd_tot, num_vss_tot,
-                                                fill_config, bias_config)
+                tmp = compute_vroute_width(self, top_layer, vm_layer, num_vdd_tot, num_vss_tot,
+                                           fill_config, bias_config)
                 route_w, vdd_x, vss_x = tmp
 
             ny = master.bound_box.height_unit // blk_h
@@ -490,9 +486,10 @@ class RDACArray(TemplateBase):
                 out_cnt += 1
 
         # draw routes
-        vdd_list, vss_list = self._join_bias_routes(vm_layer, vdd_x, vss_x, route_w, num_vdd_tot,
-                                                    num_vss_tot, hm_bias_info_list, bias_config,
-                                                    vdd_pins, vss_pins, show_pins)
+        vdd_list, vss_list = join_bias_vroutes(self, vm_layer, vdd_x, vss_x, route_w,
+                                               num_vdd_tot, num_vss_tot, hm_bias_info_list,
+                                               bias_config, vdd_pins, vss_pins, show_pins,
+                                               yt=self.bound_box.top_unit)
 
         # draw fill over routes
         nx = route_w // blk_w
@@ -520,143 +517,3 @@ class RDACArray(TemplateBase):
             mux_params=mux_params,
             io_name_list=io_name_list,
         )
-
-    def _join_bias_routes(self, vm_layer, vdd_x, vss_x, xr, num_vdd_tot, num_vss_tot,
-                          hm_bias_info_list, bias_config, vdd_pins, vss_pins, show_pins):
-        vdd_xl, vdd_xr = vdd_x
-        vss_xl, vss_xr = vss_x
-        vss_params = dict(
-            nwire=num_vss_tot,
-            width=1,
-            space_sig=0,
-        )
-        vdd_params = dict(
-            nwire=num_vdd_tot,
-            width=1,
-            space_sig=0,
-        )
-        hm_layer = vm_layer + 1
-        sup_layer = hm_layer + 1
-        vss_list = []
-        vdd_list = []
-        vss_hm_list = []
-        vdd_hm_list = []
-        vss_y_prev = vdd_y_prev = None
-        params = dict(
-            bot_layer=vm_layer,
-            bias_config=bias_config,
-        )
-        for idx, (code, num, y0) in enumerate(hm_bias_info_list):
-            if code == 0:
-                params['bot_params'] = vss_params
-                if vss_y_prev is not None and y0 > vss_y_prev:
-                    tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vss_tot,
-                                                       vss_xl, vss_y_prev, y0, check_blockage=False)
-                    vss_hm_list.extend(tmp[0])
-            else:
-                params['bot_params'] = vdd_params
-                if vdd_y_prev is not None:
-                    tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vdd_tot,
-                                                       vdd_xl, vdd_y_prev, y0, check_blockage=False)
-                    vdd_hm_list.extend(tmp[0])
-                if vss_y_prev is not None:
-                    tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vss_tot,
-                                                       vss_xl, vss_y_prev, y0, check_blockage=False)
-                    vss_hm_list.extend(tmp[0])
-
-            params['top_params'] = dict(
-                nwire=num,
-                width=1,
-                space_sig=0,
-            )
-            if idx == 0:
-                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
-                if code == 1:
-                    inst = self._add_inst_r180(master, vdd_xl, y0)
-                    vdd_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
-                    BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                                 vdd_xr, xr, check_blockage=False)
-                    vdd_y_prev = inst.array_box.top_unit
-                else:
-                    inst = self._add_inst_r180(master, vss_xl, y0)
-                    vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
-                    BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                                 vss_xr, xr, check_blockage=False)
-                    vss_y_prev = inst.array_box.top_unit
-            elif code == 1:
-                params['bot_open'] = True
-                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
-                inst = self._add_inst_r180(master, vdd_xl, y0)
-                params['bot_params'] = vss_params
-                vdd_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
-                BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                             vdd_xr, vss_xl, check_blockage=False, tb_mode=1)
-                vdd_y_prev = inst.array_box.top_unit
-                params['draw_top'] = False
-                master = self.new_template(params=params, temp_cls=BiasShieldCrossing)
-                inst = self._add_inst_r180(master, vss_xl, y0)
-                vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
-                BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                             vss_xr, xr, check_blockage=False)
-                vss_y_prev = inst.array_box.top_unit
-            else:
-                params['bot_open'] = True
-                master = self.new_template(params=params, temp_cls=BiasShieldJoin)
-                inst = self._add_inst_r180(master, vss_xl, y0)
-                vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
-                BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                             vss_xr, xr, check_blockage=False)
-                vss_y_prev = inst.array_box.top_unit
-
-        yt = self.bound_box.top_unit
-        if vss_y_prev < yt:
-            tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vss_tot,
-                                               vss_xl, vss_y_prev, yt, check_blockage=False)
-            vss_hm_list.extend(tmp[0])
-        if vdd_y_prev < yt:
-            tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vdd_tot,
-                                               vdd_xl, vdd_y_prev, yt, check_blockage=False)
-            vdd_hm_list.extend(tmp[0])
-
-        vdd_list = self.connect_wires(vdd_list, upper=yt, unit_mode=True)
-        vss_list = self.connect_wires(vss_list, upper=yt, unit_mode=True)
-        self.draw_vias_on_intersections(vdd_hm_list, vdd_list)
-        self.draw_vias_on_intersections(vss_hm_list, vss_list)
-
-        # connect pins
-        tidx_list = BiasShield.get_route_tids(self.grid, vm_layer, vss_xl, bias_config, num_vss_tot)
-        for (name, warr), (tidx, tr_w) in zip(vss_pins, islice(tidx_list, 1, num_vss_tot + 1)):
-            tid = TrackID(vm_layer, tidx, width=tr_w)
-            warr = self.connect_to_tracks(warr, tid, track_upper=yt, unit_mode=True)
-            self.add_pin(name, warr, show=show_pins, edge_mode=1)
-        tidx_list = BiasShield.get_route_tids(self.grid, vm_layer, vdd_xl, bias_config, num_vdd_tot)
-        for (name, warr), (tidx, tr_w) in zip(vdd_pins, islice(tidx_list, 1, num_vdd_tot + 1)):
-            tid = TrackID(vm_layer, tidx, width=tr_w)
-            warr = self.connect_to_tracks(warr, tid, track_upper=yt, unit_mode=True)
-            self.add_pin(name, warr, show=show_pins, edge_mode=1)
-
-        return vdd_list, vss_list
-
-    def _add_inst_r180(self, master, x, y):
-        box = master.array_box
-        return self.add_instance(master, loc=(x + box.width_unit, y + box.height_unit),
-                                 orient='R180', unit_mode=True)
-
-    def _compute_route_width(self, top_layer, vm_layer, num_vdd, num_vss, fill_config, bias_config):
-        grid = self.grid
-
-        hm_layer = vm_layer + 1
-        if num_vdd == 0:
-            vdd_xl = vdd_xr = 0
-        else:
-            vdd_xl = BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vdd)
-            vdd_xr = vdd_xl + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vdd)[0]
-        if num_vss == 0:
-            vss_xr = vss_xl = vdd_xr
-        else:
-            vss_xl = vdd_xr + BiasShieldEnd.get_dimension(grid, hm_layer, bias_config, num_vss)
-            vss_xr = vss_xl + BiasShield.get_block_size(grid, vm_layer, bias_config, num_vss)[0]
-
-        fill_w = grid.get_fill_size(top_layer, fill_config, unit_mode=True)[0]
-        route_w = -(-vss_xr // fill_w) * fill_w
-        return route_w, (vdd_xl, vdd_xr), (vss_xl, vss_xr)
