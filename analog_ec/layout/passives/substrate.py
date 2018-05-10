@@ -107,8 +107,11 @@ class SubstrateWrapper(TemplateBase):
                                 show_pins, end_mode=end_mode, is_passive=True)
 
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
-                           show_pins, end_mode=15, is_passive=True, sub_tids=None, bot_only=False):
+                           show_pins, end_mode=15, is_passive=True, sub_tids=None, bot_only=False,
+                           exclude_ports=None):
         params['show_pins'] = False
+        if exclude_ports is None:
+            exclude_ports = set()
 
         if sub_w == 0:
             master = self.new_template(params=params, temp_cls=temp_cls)
@@ -118,7 +121,8 @@ class SubstrateWrapper(TemplateBase):
             # do not draw substrate contact.
             inst = self.add_instance(master, inst_name='XDEV', loc=(0, 0), unit_mode=True)
             for port_name in inst.port_names_iter():
-                self.reexport(inst.get_port(port_name), show=show_pins)
+                if port_name not in exclude_ports:
+                    self.reexport(inst.get_port(port_name), show=show_pins)
             self.array_box = inst.array_box
             self.set_size_from_bound_box(top_layer, master_box)
 
@@ -217,8 +221,9 @@ class SubstrateWrapper(TemplateBase):
             self.add_cell_boundary(bnd_box)
 
             for port_name in inst.port_names_iter():
-                cur_label = label if port_name == sub_port_name else ''
-                self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
+                if port_name not in exclude_ports:
+                    cur_label = label if port_name == sub_port_name else ''
+                    self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
 
             fg_sub = bsub_master.fg_tot
 
