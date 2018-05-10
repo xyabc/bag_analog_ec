@@ -413,8 +413,8 @@ class RDACArray(TemplateBase):
                 res_params = master.sch_params['res_params']
                 mux_params = master.sch_params['mux_params']
                 blk_w, blk_h = self.grid.get_fill_size(top_layer, fill_config, unit_mode=True)
-                tmp = compute_vroute_width(self, top_layer, vm_layer, num_vdd_tot, num_vss_tot,
-                                           fill_config, bias_config)
+                tmp = compute_vroute_width(self, vm_layer, blk_w, num_vdd_tot, num_vss_tot,
+                                           bias_config)
                 route_w, vdd_x, vss_x = tmp
 
             ny = master.bound_box.height_unit // blk_h
