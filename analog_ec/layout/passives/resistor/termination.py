@@ -378,8 +378,13 @@ class Termination(SubstrateWrapper):
         threshold = self.params['threshold']
         sub_tr_w = self.params['sub_tr_w']
         show_pins = self.params['show_pins']
+        res_options = self.params['res_options']
+        if res_options is None:
+            res_type = 'standard'
+        else:
+            res_type = res_options.get('res_type', 'standard')
         self.draw_layout_helper(TerminationCore, res_params, sub_lch, sub_w, sub_tr_w, sub_type,
-                                threshold, show_pins, is_passive=True)
+                                threshold, show_pins, is_passive=True, res_type=res_type)
 
 
 class TerminationCMCore(ResArrayBase):

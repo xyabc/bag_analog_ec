@@ -397,6 +397,7 @@ class HighPassDiff(SubstrateWrapper):
         in_tr_info = self.params['in_tr_info']
         out_tr_info = self.params['out_tr_info']
         vdd_tr_info = self.params['vdd_tr_info']
+        res_type = self.params['res_type']
         sub_tr_w = self.params['sub_tr_w']
         sub_tids = self.params['sub_tids']
         end_mode = self.params['end_mode']
@@ -423,7 +424,7 @@ class HighPassDiff(SubstrateWrapper):
             params['vdd_tr_info'] = new_info_list
         self.draw_layout_helper(HighPassDiffCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
-                                sub_tids=sub_tids, )
+                                sub_tids=sub_tids, res_type=res_type)
 
 
 class HighPassArrayCore(ResArrayBase):
@@ -880,6 +881,7 @@ class HighPassArrayClk(SubstrateWrapper):
         sub_type = self.params['sub_type']
         threshold = self.params['threshold']
         top_layer = self.params['top_layer']
+        res_type = self.params['res_type']
         sub_tr_w = self.params['sub_tr_w']
         end_mode = self.params['end_mode']
         show_pins = self.params['show_pins']
@@ -893,4 +895,4 @@ class HighPassArrayClk(SubstrateWrapper):
         params['h_unit'] = h_unit - h_subb
         self.draw_layout_helper(HighPassArrayClkCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
-                                bot_only=True)
+                                res_type=res_type, bot_only=True)

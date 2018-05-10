@@ -99,16 +99,17 @@ class SubstrateWrapper(TemplateBase):
         params = self.params['params'].copy()
         sub_type = params['sub_type']
         threshold = params['threshold']
+        res_type = self.params.get('res_type', None)
 
         cls_mod = importlib.import_module(mod)
         temp_cls = getattr(cls_mod, cls)
 
         self.draw_layout_helper(temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
-                                show_pins, end_mode=end_mode, is_passive=True)
+                                show_pins, end_mode=end_mode, res_type=res_type)
 
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
-                           show_pins, end_mode=15, is_passive=True, sub_tids=None, bot_only=False,
-                           exclude_ports=None):
+                           show_pins, end_mode=15, res_type=None, is_passive=True, sub_tids=None,
+                           bot_only=False, exclude_ports=None):
         params['show_pins'] = False
         if exclude_ports is None:
             exclude_ports = set()
@@ -139,8 +140,10 @@ class SubstrateWrapper(TemplateBase):
             top_layer = master.top_layer
             master_box = master.bound_box
 
-            res = self.grid.resolution
-            blkw, blkh = self.grid.get_block_size(top_layer, unit_mode=True)
+            grid = self.grid
+            res = grid.resolution
+            tech_info = grid.tech_info
+            blkw, blkh = grid.get_block_size(top_layer, unit_mode=True)
 
             # draw contact and move array up
             if hasattr(master, 'get_well_width'):
@@ -150,17 +153,17 @@ class SubstrateWrapper(TemplateBase):
             bot_end_mode, top_end_mode = self.get_sub_end_modes(end_mode)
             if sub_tids is not None:
                 bot_tid, top_tid = sub_tids
-                subb_h = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                subb_h = self.get_substrate_height(grid, top_layer, sub_lch, sub_w, sub_type,
                                                    threshold, end_mode=bot_end_mode,
                                                    is_passive=is_passive)
-                subt_h = self.get_substrate_height(self.grid, top_layer, sub_lch, sub_w, sub_type,
+                subt_h = self.get_substrate_height(grid, top_layer, sub_lch, sub_w, sub_type,
                                                    threshold, end_mode=top_end_mode,
                                                    is_passive=is_passive)
                 ytop = subb_h + subt_h + master.bound_box.height_unit
 
-                hm_layer = AnalogBase.get_mos_conn_layer(self.grid.tech_info) + 1
-                tr_off = self.grid.find_next_track(hm_layer, ytop, half_track=True, mode=-1,
-                                                   unit_mode=True)
+                hm_layer = AnalogBase.get_mos_conn_layer(tech_info) + 1
+                tr_off = grid.find_next_track(hm_layer, ytop, half_track=True, mode=-1,
+                                              unit_mode=True)
                 top_tid = (tr_off - top_tid[0], top_tid[1])
             else:
                 bot_tid = top_tid = None
@@ -196,12 +199,14 @@ class SubstrateWrapper(TemplateBase):
             ycur = bot_inst.bound_box.top_unit
             inst = self.add_instance(master, inst_name='XDEV', loc=(0, ycur),
                                      unit_mode=True)
+            inst_list = [bot_inst, inst]
             if tsub_master is not None:
                 ycur = inst.bound_box.top_unit + tsub_master.bound_box.height_unit
                 top_inst = self.add_instance(tsub_master, inst_name='XTSUB', loc=(sub_x, ycur),
                                              orient='MX', unit_mode=True)
                 self.reexport(top_inst.get_port(sub_port_name), label=label, show=show_pins)
                 arr_yt = top_inst.array_box.top_unit
+                inst_list.append(top_inst)
             else:
                 ycur = inst.bound_box.top_unit
                 if inst.array_box is not None:
@@ -210,6 +215,8 @@ class SubstrateWrapper(TemplateBase):
                     arr_yt = inst.bound_box.top_unit
 
             # connect implant layers of substrate contact and device together
+            tech_info.merge_well(self, inst_list, sub_type, threshold=threshold,
+                                 res_type=res_type, merge_imp=True)
             for lay in self.grid.tech_info.get_well_layers(sub_type):
                 self.add_rect(lay, self.get_rect_bbox(lay))
 
