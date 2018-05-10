@@ -542,15 +542,19 @@ class RDACArray(TemplateBase):
         vss_hm_list = []
         vdd_hm_list = []
         vss_y_prev = vdd_y_prev = None
+        params = dict(
+            bot_layer=vm_layer,
+            bias_config=bias_config,
+        )
         for idx, (code, num, y0) in enumerate(hm_bias_info_list):
             if code == 0:
-                bot_params = vss_params
+                params['bot_params'] = vss_params
                 if vss_y_prev is not None and y0 > vss_y_prev:
                     tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vss_tot,
                                                        vss_xl, vss_y_prev, y0, check_blockage=False)
                     vss_hm_list.extend(tmp[0])
             else:
-                bot_params = vdd_params
+                params['bot_params'] = vdd_params
                 if vdd_y_prev is not None:
                     tmp = BiasShield.draw_bias_shields(self, vm_layer, bias_config, num_vdd_tot,
                                                        vdd_xl, vdd_y_prev, y0, check_blockage=False)
@@ -560,18 +564,12 @@ class RDACArray(TemplateBase):
                                                        vss_xl, vss_y_prev, y0, check_blockage=False)
                     vss_hm_list.extend(tmp[0])
 
-            top_params = dict(
+            params['top_params'] = dict(
                 nwire=num,
                 width=1,
                 space_sig=0,
             )
             if idx == 0:
-                params = dict(
-                    bot_layer=vm_layer,
-                    bias_config=bias_config,
-                    bot_params=bot_params,
-                    top_params=top_params,
-                )
                 master = self.new_template(params=params, temp_cls=BiasShieldJoin)
                 if code == 1:
                     inst = self._add_inst_r180(master, vdd_xl, y0)
@@ -586,20 +584,15 @@ class RDACArray(TemplateBase):
                                                  vss_xr, xr, check_blockage=False)
                     vss_y_prev = inst.array_box.top_unit
             elif code == 1:
-                params = dict(
-                    bot_layer=vm_layer,
-                    bias_config=bias_config,
-                    bot_params=vdd_params,
-                    top_params=top_params,
-                    bot_open=True,
-                )
+                params['bot_open'] = True
                 master = self.new_template(params=params, temp_cls=BiasShieldJoin)
                 inst = self._add_inst_r180(master, vdd_xl, y0)
                 params['bot_params'] = vss_params
                 vdd_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
                 BiasShield.draw_bias_shields(self, hm_layer, bias_config, num, y0,
-                                             vdd_xr, vss_xl, check_blockage=False)
+                                             vdd_xr, vss_xl, check_blockage=False, tb_mode=1)
                 vdd_y_prev = inst.array_box.top_unit
+                params['draw_top'] = False
                 master = self.new_template(params=params, temp_cls=BiasShieldCrossing)
                 inst = self._add_inst_r180(master, vss_xl, y0)
                 vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
@@ -607,13 +600,7 @@ class RDACArray(TemplateBase):
                                              vss_xr, xr, check_blockage=False)
                 vss_y_prev = inst.array_box.top_unit
             else:
-                params = dict(
-                    bot_layer=vm_layer,
-                    bias_config=bias_config,
-                    bot_params=vss_params,
-                    top_params=top_params,
-                    bot_open=True,
-                )
+                params['bot_open'] = True
                 master = self.new_template(params=params, temp_cls=BiasShieldJoin)
                 inst = self._add_inst_r180(master, vss_xl, y0)
                 vss_list.extend(inst.port_pins_iter('sup', layer=sup_layer))
