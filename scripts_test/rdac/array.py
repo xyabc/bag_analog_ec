@@ -21,6 +21,6 @@ if __name__ == '__main__':
         bprj = local_dict['bprj']
 
     # bprj.generate_cell(block_specs, RDACArray, debug=True, save_cache=True)
-    bprj.generate_cell(block_specs, RDACArray, debug=True, use_cache=True)
-    # bprj.generate_cell(block_specs, RDACArray, debug=True)
+    # bprj.generate_cell(block_specs, RDACArray, debug=True, use_cache=True)
+    bprj.generate_cell(block_specs, RDACArray, debug=True)
     # bprj.generate_cell(block_specs, RDACArray, gen_lay=False, gen_sch=True)
