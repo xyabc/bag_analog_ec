@@ -9,13 +9,13 @@ import math
 from itertools import chain
 
 from bag.layout.routing import TrackID
-from bag.layout.template import TemplateDB
 
 from abs_templates_ec.resistor.core import ResArrayBase
 
 from analog_ec.layout.passives.substrate import SubstrateWrapper
 
 if TYPE_CHECKING:
+    from bag.layout.template import TemplateDB
     from bag.layout.routing import WireArray
 
 
@@ -25,7 +25,7 @@ class TerminationCore(ResArrayBase):
     Parameters
     ----------
     temp_db : :class:`bag.layout.template.TemplateDB`
-            the template database.
+        the template database.
     lib_name : str
         the layout library name.
     params : Dict[str, Any]
