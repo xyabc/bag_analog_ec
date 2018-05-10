@@ -6,7 +6,10 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any, List, Tuple, Optional
 
+from itertools import islice
+
 from bag.layout.util import BBox
+from bag.layout.routing.base import TrackID
 from bag.layout.template import TemplateBase
 
 from abs_templates_ec.routing.fill import PowerFill
@@ -489,7 +492,7 @@ class RDACArray(TemplateBase):
         # draw routes
         vdd_list, vss_list = self._join_bias_routes(vm_layer, vdd_x, vss_x, route_w, num_vdd_tot,
                                                     num_vss_tot, hm_bias_info_list, bias_config,
-                                                    vdd_pins, vss_pins)
+                                                    vdd_pins, vss_pins, show_pins)
 
         # draw fill over routes
         nx = route_w // blk_w
@@ -519,7 +522,7 @@ class RDACArray(TemplateBase):
         )
 
     def _join_bias_routes(self, vm_layer, vdd_x, vss_x, xr, num_vdd_tot, num_vss_tot,
-                          hm_bias_info_list, bias_config, vdd_pins, vss_pins):
+                          hm_bias_info_list, bias_config, vdd_pins, vss_pins, show_pins):
         vdd_xl, vdd_xr = vdd_x
         vss_xl, vss_xr = vss_x
         vss_params = dict(
@@ -633,7 +636,17 @@ class RDACArray(TemplateBase):
         self.draw_vias_on_intersections(vdd_hm_list, vdd_list)
         self.draw_vias_on_intersections(vss_hm_list, vss_list)
 
-
+        # connect pins
+        tidx_list = BiasShield.get_route_tids(self.grid, vm_layer, vss_xl, bias_config, num_vss_tot)
+        for (name, warr), (tidx, tr_w) in zip(vss_pins, islice(tidx_list, 1, num_vss_tot + 1)):
+            tid = TrackID(vm_layer, tidx, width=tr_w)
+            warr = self.connect_to_tracks(warr, tid, track_upper=yt, unit_mode=True)
+            self.add_pin(name, warr, show=show_pins, edge_mode=1)
+        tidx_list = BiasShield.get_route_tids(self.grid, vm_layer, vdd_xl, bias_config, num_vdd_tot)
+        for (name, warr), (tidx, tr_w) in zip(vdd_pins, islice(tidx_list, 1, num_vdd_tot + 1)):
+            tid = TrackID(vm_layer, tidx, width=tr_w)
+            warr = self.connect_to_tracks(warr, tid, track_upper=yt, unit_mode=True)
+            self.add_pin(name, warr, show=show_pins, edge_mode=1)
 
         return vdd_list, vss_list
 
