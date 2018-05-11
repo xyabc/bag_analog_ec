@@ -323,9 +323,7 @@ class RDACArray(TemplateBase):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
-        self._bias_info_list = None
-        self._vdd_names = None
-        self._vss_names = None
+        self._bias_info = None
 
     @property
     def sch_params(self):
@@ -333,25 +331,15 @@ class RDACArray(TemplateBase):
         return self._sch_params
 
     @property
-    def bias_info_list(self):
-        # type: () -> List[Tuple[int, int, int]]
-        return self._bias_info_list
-
-    @property
-    def vdd_names(self):
-        # type: () -> List[str]
-        return self._vdd_names
-
-    @property
-    def vss_names(self):
-        # type: () -> List[str]
-        return self._vss_names
+    def bias_info(self):
+        # type: () -> Tuple[Tuple[int, List[str]], Tuple[int, List[str]]]
+        return self._bias_info
 
     @classmethod
     def get_cache_properties(cls):
         # type: () -> List[str]
         """Returns a list of properties to cache."""
-        return ['sch_params', 'bias_info_list', 'vdd_names', 'vss_names']
+        return ['sch_params', 'bias_info']
 
     @classmethod
     def get_params_info(cls):
@@ -537,6 +525,4 @@ class RDACArray(TemplateBase):
             mux_params=mux_params,
             io_name_list=io_name_list,
         )
-        self._bias_info_list = [(1, num_vdd_tot, vdd_x[0]), (0, num_vss_tot, vss_x[0])]
-        self._vdd_names = vdd_names
-        self._vss_names = vss_names
+        self._bias_info = ((vdd_x[0], vdd_names), (vss_x[0], vss_names))
