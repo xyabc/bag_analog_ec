@@ -740,7 +740,7 @@ class HighPassArrayClkCore(TemplateBase):
             h_unit='total height, in resolution units.',
             sub_type='the substrate type.',
             threshold='the substrate threshold flavor.',
-            top_layer='The top layer ID',
+            top_layer='The top layer ID for HighPassArrayCore.',
             narr='Number of high-pass filters.',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
@@ -779,13 +779,10 @@ class HighPassArrayClkCore(TemplateBase):
         master = self.new_template(params=params, temp_cls=HighPassArrayCore)
 
         tr_manager = TrackManager(self.grid, tr_widths, tr_spaces, half_space=True)
+        pidx, nidx, y0 = self._place_clock_wires(master, narr, top_layer, tr_manager)
+
         xm_layer = top_layer + 1
         xm_w = tr_manager.get_width(xm_layer, 'clk')
-        ntr, locs = tr_manager.place_wires(xm_layer, ['clk', 'clk'])
-
-        blk_w, blk_h = self.grid.get_block_size(top_layer, unit_mode=True)
-        y0 = ntr * self.grid.get_track_pitch(xm_layer, unit_mode=True)
-        y0 = -(-y0 // blk_h) * blk_h
 
         inst = self.add_instance(master, 'XARR', loc=(0, y0), unit_mode=True)
         bnd_box = inst.bound_box.extend(y=0, unit_mode=True)
@@ -796,8 +793,6 @@ class HighPassArrayClkCore(TemplateBase):
         # re-export/connect clocks
         self.reexport(inst.get_port('VSSL'), label='VSS:', show=show_pins)
         self.reexport(inst.get_port('VSSR'), label='VSS:', show=show_pins)
-        pidx = locs[0]
-        nidx = locs[1]
         clkp_list = []
         clkn_list = []
         for idx in range(narr):
@@ -815,6 +810,32 @@ class HighPassArrayClkCore(TemplateBase):
         self.add_pin('clkn', clkn, show=show_pins)
 
         self._sch_params = master.sch_params
+
+    def _place_clock_wires(self, master, narr, top_layer, tr_manager):
+        yb_min = master.bound_box.top_unit
+        for idx in range(narr):
+            yb_min = min(yb_min, master.get_port('in<%d>' % idx).get_pins()[0].lower_unit)
+
+        xm_layer = top_layer + 1
+        xm_w = tr_manager.get_width(xm_layer, 'clk')
+
+        pidx = self.grid.find_next_track(xm_layer, yb_min, tr_width=xm_w, half_track=True,
+                                         mode=-1, unit_mode=True)
+        nidx = tr_manager.get_next_track(xm_layer, pidx, 'clk', 'clk', up=False)
+
+        edge_tr2 = int(round(2 * nidx)) - xm_w
+        if edge_tr2 < -1:
+            tr_pitch = self.grid.get_track_pitch(xm_layer, unit_mode=True)
+            dy = (edge_tr2 + 1) * tr_pitch // 2
+            blk_h = self.grid.get_block_size(top_layer, unit_mode=True)[1]
+            dy = -(-dy // blk_h) * blk_h
+            tr_delta = dy / tr_pitch
+            pidx += tr_delta
+            nidx += tr_delta
+        else:
+            dy = 0
+
+        return pidx, nidx, dy
 
 
 class HighPassArrayClk(SubstrateWrapper):
