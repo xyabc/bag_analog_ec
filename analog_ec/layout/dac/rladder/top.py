@@ -6,6 +6,8 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any, List, Tuple, Optional
 
+from itertools import chain
+
 from bag.layout.util import BBox
 from bag.layout.template import TemplateBase
 
@@ -502,10 +504,12 @@ class RDACArray(TemplateBase):
                 out_cnt += 1
 
         # draw routes
-        vdd_list, vss_list = join_bias_vroutes(self, vm_layer, vdd_x, vss_x, route_w,
-                                               num_vdd_tot, num_vss_tot, hm_bias_info_list,
-                                               bias_config, vdd_pins, vss_pins, show_pins,
-                                               yt=self.bound_box.top_unit)
+        tmp = join_bias_vroutes(self, vm_layer, vdd_x, vss_x, route_w, num_vdd_tot, num_vss_tot,
+                                hm_bias_info_list, bias_config, vdd_pins, vss_pins,
+                                yt=self.bound_box.top_unit)
+        vdd_pins, vss_pins, vdd_list, vss_list = tmp
+        for name, warr in chain(vdd_pins, vss_pins):
+            self.add_pin(name, warr, show=show_pins, edge_mode=1)
 
         # draw fill over routes
         nx = route_w // blk_w
