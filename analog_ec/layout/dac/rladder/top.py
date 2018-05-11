@@ -321,7 +321,9 @@ class RDACArray(TemplateBase):
         # type: (TemplateDB, str, Dict[str, Any], Set[str], **kwargs) -> None
         TemplateBase.__init__(self, temp_db, lib_name, params, used_names, **kwargs)
         self._sch_params = None
-        self._bias_info = None
+        self._bias_info_list = None
+        self._vdd_names = None
+        self._vss_names = None
 
     @property
     def sch_params(self):
@@ -329,15 +331,25 @@ class RDACArray(TemplateBase):
         return self._sch_params
 
     @property
-    def bias_info(self):
-        # type: () -> List[int, Optional[Tuple[Any]]]
-        return self._bias_info
+    def bias_info_list(self):
+        # type: () -> List[Tuple[int, int, int]]
+        return self._bias_info_list
+
+    @property
+    def vdd_names(self):
+        # type: () -> List[str]
+        return self._vdd_names
+
+    @property
+    def vss_names(self):
+        # type: () -> List[str]
+        return self._vss_names
 
     @classmethod
     def get_cache_properties(cls):
         # type: () -> List[str]
         """Returns a list of properties to cache."""
-        return ['sch_params', 'bias_info']
+        return ['sch_params', 'bias_info_list', 'vdd_names', 'vss_names']
 
     @classmethod
     def get_params_info(cls):
@@ -453,6 +465,8 @@ class RDACArray(TemplateBase):
         io_name_list = []
         vdd_pins = []
         vss_pins = []
+        vdd_names = []
+        vss_names = []
         params = dict(fill_config=fill_config, bot_layer=top_layer - 1, show_pins=False)
         fill_master = self.new_template(params=params, temp_cls=PowerFill)
         for inst, (xr, yf, ny, fo_mode), name_list, num_vdd in zip(inst_list, fill_info_list,
@@ -475,8 +489,10 @@ class RDACArray(TemplateBase):
                 io_name_list.append(name)
                 if out_cnt < num_vdd:
                     vdd_pins.append((opin_name, out_pin))
+                    vdd_names.append(opin_name)
                 else:
                     vss_pins.append((opin_name, out_pin))
+                    vss_names.append(opin_name)
                 for in_idx in range(nin):
                     in_pin = inst.get_pin('code<%d>' % in_cnt)
                     in_pin = self.extend_wires(in_pin, upper=xr_tot, unit_mode=True)
@@ -517,3 +533,6 @@ class RDACArray(TemplateBase):
             mux_params=mux_params,
             io_name_list=io_name_list,
         )
+        self._bias_info_list = [(1, num_vdd_tot, vdd_x[0]), (0, num_vss_tot, vss_x[0])]
+        self._vdd_names = vdd_names
+        self._vss_names = vss_names
