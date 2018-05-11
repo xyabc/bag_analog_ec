@@ -19,11 +19,11 @@ instances:
         net_name: "VDD"
         num_bits: 1
       out:
-        direction: inputOutput
+        direction: output
         net_name: "out"
         num_bits: 1
       in:
-        direction: inputOutput
+        direction: input
         net_name: "vmid"
         num_bits: 1
   XCORE:
