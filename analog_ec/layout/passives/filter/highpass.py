@@ -467,6 +467,7 @@ class HighPassArrayCore(ResArrayBase):
             top_layer='The top layer ID',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            cap_h_list='List of capacitor heights, in resolution units.',
             res_type='Resistor intent',
             res_options='Configuration dictionary for ResArrayBase.',
             cap_spx='Capacitor horizontal separation, in resolution units.',
@@ -501,6 +502,7 @@ class HighPassArrayCore(ResArrayBase):
         res_options = self.params['res_options']
         cap_spx = self.params['cap_spx']
         cap_spy = self.params['cap_spy']
+        cap_h_list = self.params['cap_h_list']
         half_blk_x = self.params['half_blk_x']
         show_pins = self.params['show_pins']
 
@@ -549,7 +551,7 @@ class HighPassArrayCore(ResArrayBase):
         # connect resistors and draw MOM caps
         tmp = self._connect_resistors(narr, nser, ndum, cap_spx, show_pins)
         rout_list, cap_x_list = tmp
-        tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, cap_spy, show_pins)
+        tmp = self._draw_mom_cap(cap_x_list, bot_layer, top_layer, cap_spy, cap_h_list, show_pins)
         cout_list, ores_info, cres_info = tmp
 
         # connect bias resistor to cap
@@ -646,13 +648,12 @@ class HighPassArrayCore(ResArrayBase):
 
         return out_list, cap_x_list
 
-    def _draw_mom_cap(self, cap_x_list, bot_layer, top_layer, cap_spy, show_pins):
+    def _draw_mom_cap(self, cap_x_list, bot_layer, top_layer, cap_spy, cap_h_list, show_pins):
         grid = self.grid
         res = grid.resolution
 
         # get port location
         bnd_box = self.bound_box
-        cap_yb = bnd_box.bottom_unit + cap_spy
         cap_yt = bnd_box.top_unit - cap_spy
 
         # draw MOM cap
@@ -660,7 +661,8 @@ class HighPassArrayCore(ResArrayBase):
 
         out_list = []
         out_res_info = in_res_info = None
-        for cap_idx, (cap_xl, cap_xr) in enumerate(cap_x_list):
+        for cap_idx, ((cap_xl, cap_xr), cap_h) in enumerate(zip(cap_x_list, cap_h_list)):
+            cap_yb = max(bnd_box.bottom_unit + cap_spy, cap_yt - cap_h)
             cap_box = BBox(cap_xl, cap_yb, cap_xr, cap_yt, res, unit_mode=True)
             parity = cap_idx % 2
             port_par = (parity, 1 - parity)
@@ -742,6 +744,7 @@ class HighPassArrayClkCore(TemplateBase):
             narr='Number of high-pass filters.',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            cap_h_list='List of capacitor heights, in resolution units.',
             tr_widths='track widths dictionary.',
             tr_spaces='track spacings dictionary.',
             res_type='Resistor intent',
@@ -850,6 +853,7 @@ class HighPassArrayClk(SubstrateWrapper):
             narr='Number of high-pass filters.',
             nser='number of resistors in series in a branch.',
             ndum='number of dummy resistors.',
+            cap_h_list='List of capacitor heights, in resolution units.',
             tr_widths='track widths dictionary.',
             tr_spaces='track spacings dictionary.',
             res_type='Resistor intent',
