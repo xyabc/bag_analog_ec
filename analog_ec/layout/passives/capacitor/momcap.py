@@ -97,9 +97,10 @@ class MOMCapCore(TemplateBase):
         cap_port_width = self.grid.get_min_track_width(cap_top_layer, top_w=top_w, unit_mode=True)
         if cap_options is None:
             cap_options = dict(port_widths={cap_top_layer: cap_port_width})
-        elif 'port_widths' in cap_options:
+        elif 'port_widths' not in cap_options:
             cap_options = cap_options.copy()
             cap_options['port_widths'] = {cap_top_layer: cap_port_width}
+
         bot_w = self.grid.get_track_width(cap_top_layer, cap_port_width, unit_mode=True)
 
         # get port locations
