@@ -426,6 +426,11 @@ class HighPassDiff(SubstrateWrapper):
                                 threshold, show_pins, end_mode=end_mode, is_passive=True,
                                 sub_tids=sub_tids, res_type=res_type)
 
+        # do max space fill
+        for lay_id in range(1, hm_layer):
+            self.do_max_space_fill(lay_id)
+        self.fill_box = self.bound_box
+
 
 class HighPassArrayCore(ResArrayBase):
     """An array of RC high-pass filter.
