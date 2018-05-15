@@ -117,7 +117,7 @@ class ResLadderCore(ResArrayBase):
             w=w,
             intent=res_type,
             nout=nx * ny,
-            ndum=(nx + ny) * 2 * ndum + 4 * ndum**2,
+            ndum=(nx + ny) * 2 * ndum + 4 * ndum ** 2,
             sub_name='',
         )
 
@@ -442,9 +442,9 @@ class ResLadder(SubstrateWrapper):
             res_type = 'standard'
         else:
             res_type = res_options.get('res_type', 'standard')
-        inst = self.draw_layout_helper(ResLadderCore, res_params, sub_lch, sub_w, sub_tr_w,
-                                       sub_type, threshold, show_pins, is_passive=True,
-                                       res_type=res_type)
+        inst, _ = self.draw_layout_helper(ResLadderCore, res_params, sub_lch, sub_w, sub_tr_w,
+                                          sub_type, threshold, show_pins, is_passive=True,
+                                          res_type=res_type)
         self._num_tracks = inst.master.num_tracks
         self._core_offset = inst.master.core_offset
 

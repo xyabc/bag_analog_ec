@@ -129,6 +129,7 @@ class SubstrateWrapper(TemplateBase):
 
             fg_sub = 0
             sub_port_name = ''
+            sub_port_list = []
         else:
             # to center substrate with respect to master, master must have a middle X coordinate
             if 'half_blk_x' not in temp_cls.get_params_info():
@@ -193,7 +194,7 @@ class SubstrateWrapper(TemplateBase):
             label = sub_port_name + ':'
             bot_inst = self.add_instance(bsub_master, inst_name='XBSUB', loc=(sub_x, 0),
                                          unit_mode=True)
-            self.reexport(bot_inst.get_port(sub_port_name), label=label, show=show_pins)
+            sub_port_list = bot_inst.get_all_port_pins(sub_port_name)
             arr_yb = bot_inst.array_box.bottom_unit
 
             ycur = bot_inst.bound_box.top_unit
@@ -204,7 +205,7 @@ class SubstrateWrapper(TemplateBase):
                 ycur = inst.bound_box.top_unit + tsub_master.bound_box.height_unit
                 top_inst = self.add_instance(tsub_master, inst_name='XTSUB', loc=(sub_x, ycur),
                                              orient='MX', unit_mode=True)
-                self.reexport(top_inst.get_port(sub_port_name), label=label, show=show_pins)
+                sub_port_list.append(top_inst.get_all_port_pins(sub_port_name))
                 arr_yt = top_inst.array_box.top_unit
                 inst_list.append(top_inst)
             else:
@@ -232,10 +233,11 @@ class SubstrateWrapper(TemplateBase):
                     cur_label = label if port_name == sub_port_name else ''
                     self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
 
+            self.add_pin(sub_port_name, sub_port_list, label=label, show=show_pins)
             fg_sub = bsub_master.fg_tot
 
         self._sch_params = master.sch_params.copy()
         self._sch_params['sub_name'] = sub_port_name
         self._fg_sub = fg_sub
 
-        return inst
+        return inst, sub_port_list

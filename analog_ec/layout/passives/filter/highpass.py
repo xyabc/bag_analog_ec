@@ -796,8 +796,12 @@ class HighPassArrayClkCore(TemplateBase):
         self.add_cell_boundary(self.bound_box)
 
         # re-export/connect clocks
-        self.reexport(inst.get_port('VSSL'), label='VSS:', show=show_pins)
-        self.reexport(inst.get_port('VSSR'), label='VSS:', show=show_pins)
+        vssl = inst.get_pin('VSSL')
+        vssl = self.extend_wires(vssl, lower=0, unit_mode=True)
+        vssr = inst.get_pin('VSSR')
+        vssr = self.extend_wires(vssr, upper=bnd_box.right_unit, unit_mode=True)
+        self.add_pin('VSSL', vssl, label='VSS:', show=show_pins)
+        self.add_pin('VSSR', vssr, label='VSS:', show=show_pins)
         clkp_list = []
         clkn_list = []
         for idx in range(narr):
@@ -923,6 +927,11 @@ class HighPassArrayClk(SubstrateWrapper):
 
         params = self.params.copy()
         params['h_unit'] = h_unit - h_subb
-        self.draw_layout_helper(HighPassArrayClkCore, params, sub_lch, sub_w, sub_tr_w, sub_type,
-                                threshold, show_pins, end_mode=end_mode, is_passive=True,
-                                res_type=res_type, bot_only=True)
+        inst, sup_list = self.draw_layout_helper(HighPassArrayClkCore, params, sub_lch, sub_w,
+                                                 sub_tr_w, sub_type, threshold, show_pins,
+                                                 end_mode=end_mode, is_passive=True,
+                                                 res_type=res_type, bot_only=True)
+        self.fill_box = bnd_box = self.bound_box
+        self.extend_wires(sup_list, lower=0, upper=bnd_box.right_unit, unit_mode=True)
+        for lay in range(1, top_layer):
+            self.do_max_space_fill(lay, bnd_box)
