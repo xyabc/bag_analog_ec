@@ -205,7 +205,7 @@ class SubstrateWrapper(TemplateBase):
                 ycur = inst.bound_box.top_unit + tsub_master.bound_box.height_unit
                 top_inst = self.add_instance(tsub_master, inst_name='XTSUB', loc=(sub_x, ycur),
                                              orient='MX', unit_mode=True)
-                sub_port_list.append(top_inst.get_all_port_pins(sub_port_name))
+                sub_port_list.extend(top_inst.get_all_port_pins(sub_port_name))
                 arr_yt = top_inst.array_box.top_unit
                 inst_list.append(top_inst)
             else:
