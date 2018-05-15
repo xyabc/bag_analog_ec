@@ -428,7 +428,7 @@ class HighPassDiff(SubstrateWrapper):
 
         # do max space fill
         for lay_id in range(1, hm_layer):
-            self.do_max_space_fill(lay_id)
+            self.do_max_space_fill(lay_id, fill_pitch=2)
         self.fill_box = self.bound_box
 
 
@@ -934,4 +934,4 @@ class HighPassArrayClk(SubstrateWrapper):
         self.fill_box = bnd_box = self.bound_box
         self.extend_wires(sup_list, lower=0, upper=bnd_box.right_unit, unit_mode=True)
         for lay in range(1, top_layer):
-            self.do_max_space_fill(lay, bnd_box)
+            self.do_max_space_fill(lay, bnd_box, fill_pitch=2)
