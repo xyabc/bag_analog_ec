@@ -110,9 +110,30 @@ class SubstrateWrapper(TemplateBase):
     def draw_layout_helper(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
                            show_pins, end_mode=15, res_type=None, is_passive=True, sub_tids=None,
                            bot_only=False, exclude_ports=None):
-        params['show_pins'] = False
+
+        tmp = self.place_instances(temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
+                                   end_mode=end_mode, res_type=res_type, is_passive=is_passive,
+                                   sub_tids=sub_tids, bot_only=bot_only)
+        inst, sub_insts, sub_port_name = tmp
+
         if exclude_ports is None:
             exclude_ports = set()
+
+        label = sub_port_name + ':'
+        for port_name in inst.port_names_iter():
+            if port_name not in exclude_ports:
+                cur_label = label if port_name == sub_port_name else ''
+                self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
+
+        sub_port_list = [pin for inst in sub_insts for pin in inst.port_pins_iter(sub_port_name)]
+        if sub_port_list:
+            self.add_pin(sub_port_name, sub_port_list, label=label, show=show_pins)
+
+        return inst, sub_port_list
+
+    def place_instances(self, temp_cls, params, sub_lch, sub_w, sub_tr_w, sub_type, threshold,
+                        end_mode=15, res_type=None, is_passive=True, sub_tids=None, bot_only=False):
+        params['show_pins'] = False
 
         if sub_w == 0:
             master = self.new_template(params=params, temp_cls=temp_cls)
@@ -121,15 +142,12 @@ class SubstrateWrapper(TemplateBase):
 
             # do not draw substrate contact.
             inst = self.add_instance(master, inst_name='XDEV', loc=(0, 0), unit_mode=True)
-            for port_name in inst.port_names_iter():
-                if port_name not in exclude_ports:
-                    self.reexport(inst.get_port(port_name), show=show_pins)
             self.array_box = inst.array_box
             self.set_size_from_bound_box(top_layer, master_box)
 
             fg_sub = 0
             sub_port_name = ''
-            sub_port_list = []
+            sub_insts = []
         else:
             # to center substrate with respect to master, master must have a middle X coordinate
             if 'half_blk_x' not in temp_cls.get_params_info():
@@ -191,23 +209,19 @@ class SubstrateWrapper(TemplateBase):
             sub_x = (master_box.width_unit - bsub_box.width_unit) // 2
 
             sub_port_name = 'VDD' if sub_type == 'ntap' else 'VSS'
-            label = sub_port_name + ':'
             bot_inst = self.add_instance(bsub_master, inst_name='XBSUB', loc=(sub_x, 0),
                                          unit_mode=True)
-            sub_port_list = bot_inst.get_all_port_pins(sub_port_name)
             arr_yb = bot_inst.array_box.bottom_unit
-
+            sub_insts = [bot_inst]
             ycur = bot_inst.bound_box.top_unit
             inst = self.add_instance(master, inst_name='XDEV', loc=(0, ycur),
                                      unit_mode=True)
-            inst_list = [bot_inst, inst]
             if tsub_master is not None:
                 ycur = inst.bound_box.top_unit + tsub_master.bound_box.height_unit
                 top_inst = self.add_instance(tsub_master, inst_name='XTSUB', loc=(sub_x, ycur),
                                              orient='MX', unit_mode=True)
-                sub_port_list.extend(top_inst.get_all_port_pins(sub_port_name))
                 arr_yt = top_inst.array_box.top_unit
-                inst_list.append(top_inst)
+                sub_insts.append(top_inst)
             else:
                 ycur = inst.bound_box.top_unit
                 if inst.array_box is not None:
@@ -216,8 +230,10 @@ class SubstrateWrapper(TemplateBase):
                     arr_yt = inst.bound_box.top_unit
 
             # connect implant layers of substrate contact and device together
-            tech_info.merge_well(self, inst_list, sub_type, threshold=threshold,
+            sub_insts.append(inst)
+            tech_info.merge_well(self, sub_insts, sub_type, threshold=threshold,
                                  res_type=res_type, merge_imp=True)
+            del sub_insts[-1]
             for lay in self.grid.tech_info.get_well_layers(sub_type):
                 self.add_rect(lay, self.get_rect_bbox(lay))
 
@@ -228,16 +244,10 @@ class SubstrateWrapper(TemplateBase):
             self.set_size_from_bound_box(top_layer, bnd_box)
             self.add_cell_boundary(bnd_box)
 
-            for port_name in inst.port_names_iter():
-                if port_name not in exclude_ports:
-                    cur_label = label if port_name == sub_port_name else ''
-                    self.reexport(inst.get_port(port_name), label=cur_label, show=show_pins)
-
-            self.add_pin(sub_port_name, sub_port_list, label=label, show=show_pins)
             fg_sub = bsub_master.fg_tot
 
         self._sch_params = master.sch_params.copy()
         self._sch_params['sub_name'] = sub_port_name
         self._fg_sub = fg_sub
 
-        return inst, sub_port_list
+        return inst, sub_insts, sub_port_name
