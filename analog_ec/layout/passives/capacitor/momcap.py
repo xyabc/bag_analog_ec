@@ -9,6 +9,8 @@ from bag.layout.util import BBox
 from bag.layout.routing import TrackID
 from bag.layout.template import TemplateBase
 
+from abs_templates_ec.analog_mos.mos import DummyFillActive
+
 from ..substrate import SubstrateWrapper
 
 if TYPE_CHECKING:
@@ -58,6 +60,11 @@ class MOMCapCore(TemplateBase):
             out_tid='Output TrackID information.',
             port_tr_w='MOM cap port track width, in number of tracks.',
             options='MOM cap layout options.',
+            fill_config='Fill configuration dictionary.  If not None, quantize to fill grid.',
+            fill_dummy='True to draw dummy fill.',
+            fill_pitch='dummy fill pitch.',
+            mos_type='dummy fill transistor type.',
+            threshold='dummy fill threshold.',
             half_blk_x='True to allow half horizontal blocks.',
             half_blk_y='True to allow half vertical blocks.',
             show_pins='True to show pin labels.',
@@ -72,6 +79,11 @@ class MOMCapCore(TemplateBase):
             out_tid=None,
             port_tr_w=1,
             options=None,
+            fill_config=None,
+            fill_dummy=False,
+            filL_pitch=2,
+            mos_type='nch',
+            threshold='standard',
             half_blk_x=True,
             half_blk_y=True,
             show_pins=True,
@@ -88,18 +100,33 @@ class MOMCapCore(TemplateBase):
         out_tid = self.params['out_tid']
         port_tr_w = self.params['port_tr_w']
         options = self.params['options']
+        fill_config = self.params['fill_config']
+        fill_dummy = self.params['fill_dummy']
+        fill_pitch = self.params['fill_pitch']
+        mos_type = self.params['mos_type']
+        threshold = self.params['threshold']
         half_blk_x = self.params['half_blk_x']
         half_blk_y = self.params['half_blk_y']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
 
-        # set size
         io_layer = top_layer + 1
-        bnd_box = BBox(0, 0, width + 2 * margin, height + 2 * margin, res, unit_mode=True)
-        self.set_size_from_bound_box(io_layer, bnd_box, round_up=True, half_blk_x=half_blk_x,
-                                     half_blk_y=half_blk_y)
-        self.array_box = bnd_box = self.bound_box
+        w_tot = width + 2 * margin
+        h_tot = height + 2 * margin
+        if fill_config is None:
+            w_blk, h_blk = self.grid.get_block_size(io_layer, unit_mode=True,
+                                                    half_blk_x=half_blk_x, half_blk_y=half_blk_y)
+        else:
+            w_blk, h_blk = self.grid.get_fill_size(io_layer, fill_config, unit_mode=True,
+                                                   half_blk_x=half_blk_x, half_blk_y=half_blk_y)
+        w_tot = -(-w_tot // w_blk) * w_blk
+        h_tot = -(-h_tot // h_blk) * h_blk
+
+        # set size
+        self.array_box = bnd_box = BBox(0, 0, w_tot, h_tot, res, unit_mode=True)
+        self.set_size_from_bound_box(io_layer, bnd_box)
+        self.add_cell_boundary(bnd_box)
 
         # get input/output track location
         io_horiz = self.grid.get_direction(io_layer) == 'x'
@@ -148,7 +175,7 @@ class MOMCapCore(TemplateBase):
         in_min_len = self.grid.get_min_length(io_layer, in_tr_w, unit_mode=True)
         res_upper = cin.track_id.get_bounds(self.grid, unit_mode=True)[0]
         res_lower = res_upper - in_min_len
-        in_lower = res_lower - in_min_len
+        in_lower = min(0, res_lower - in_min_len)
         self.connect_to_tracks(cin, in_tid, track_lower=in_lower, unit_mode=True)
         self.add_res_metal_warr(io_layer, in_tidx, res_lower, res_upper, width=in_tr_w,
                                 unit_mode=True)
@@ -158,7 +185,7 @@ class MOMCapCore(TemplateBase):
         out_min_len = self.grid.get_min_length(io_layer, out_tr_w, unit_mode=True)
         res_lower = cout.track_id.get_bounds(self.grid, unit_mode=True)[1]
         res_upper = res_lower + out_min_len
-        out_upper = res_upper + out_min_len
+        out_upper = max(w_tot, res_upper + out_min_len)
         self.connect_to_tracks(cout, out_tid, track_upper=out_upper, unit_mode=True)
         self.add_res_metal_warr(io_layer, out_tidx, res_lower, res_upper, width=out_tr_w,
                                 unit_mode=True)
@@ -167,6 +194,18 @@ class MOMCapCore(TemplateBase):
 
         self.add_pin('plus', in_warr, show=show_pins)
         self.add_pin('minus', out_warr, show=show_pins)
+
+        if fill_dummy:
+            for lay in range(1, io_layer + 1):
+                self.do_max_space_fill(lay, bnd_box, fill_pitch=fill_pitch)
+            dum_params = dict(
+                mos_type=mos_type,
+                threshold=threshold,
+                width=w_tot,
+                height=h_tot
+            )
+            master_dum = self.new_template(params=dum_params, temp_cls=DummyFillActive)
+            self.add_instance(master_dum, unit_mode=True)
 
         lay_unit = self.grid.layout_unit
         self._sch_params = dict(
