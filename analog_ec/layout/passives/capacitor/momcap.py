@@ -49,14 +49,15 @@ class MOMCapCore(TemplateBase):
     def get_params_info(cls):
         # type: () -> Dict[str, str]
         return dict(
-            cap_bot_layer='MOM cap bottom layer.',
-            cap_top_layer='MOM cap top layer.',
-            cap_width='MOM cap width, in layout units.',
-            cap_height='MOM cap height, in layout units.',
-            cap_margin='margin between cap and boundary, in layout units.',
-            port_width='port track width, in number of tracks.',
-            port_idx='port track index.  Can be int, two-int tuple, or None.  Defaults to center.',
-            cap_options='MOM cap layout options.',
+            bot_layer='MOM cap bottom layer.',
+            top_layer='MOM cap top layer.',
+            width='MOM cap width, in resolution units.',
+            height='MOM cap height, in resolution units.',
+            margin='margin between cap and boundary, in resolution units.',
+            in_tid='Input TrackID information.',
+            out_tid='Output TrackID information.',
+            port_tr_w='MOM cap port track width, in number of tracks.',
+            options='MOM cap layout options.',
             half_blk_x='True to allow half horizontal blocks.',
             half_blk_y='True to allow half vertical blocks.',
             show_pins='True to show pin labels.',
@@ -66,10 +67,11 @@ class MOMCapCore(TemplateBase):
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            cap_margin=0,
-            port_width=1,
-            port_idx=None,
-            cap_options=None,
+            margin=0,
+            in_tid=None,
+            out_tid=None,
+            port_tr_w=1,
+            options=None,
             half_blk_x=True,
             half_blk_y=True,
             show_pins=True,
@@ -77,106 +79,99 @@ class MOMCapCore(TemplateBase):
 
     def draw_layout(self):
         # type: () -> None
-        cap_bot_layer = self.params['cap_bot_layer']
-        cap_top_layer = self.params['cap_top_layer']
-        cap_width = self.params['cap_width']
-        cap_height = self.params['cap_height']
-        cap_margin = self.params['cap_margin']
-        port_width = self.params['port_width']
-        port_idx = self.params['port_idx']
-        cap_options = self.params['cap_options']
+        bot_layer = self.params['bot_layer']
+        top_layer = self.params['top_layer']
+        width = self.params['width']
+        height = self.params['height']
+        margin = self.params['margin']
+        in_tid = self.params['in_tid']
+        out_tid = self.params['out_tid']
+        port_tr_w = self.params['port_tr_w']
+        options = self.params['options']
         half_blk_x = self.params['half_blk_x']
         half_blk_y = self.params['half_blk_y']
         show_pins = self.params['show_pins']
 
         res = self.grid.resolution
 
-        # setup capacitor options
-        port_layer = cap_top_layer + 1
-        top_w = self.grid.get_track_width(port_layer, port_width, unit_mode=True)
-        cap_port_width = self.grid.get_min_track_width(cap_top_layer, top_w=top_w, unit_mode=True)
-        if cap_options is None:
-            cap_options = dict(port_widths={cap_top_layer: cap_port_width})
-        elif 'port_widths' not in cap_options:
-            cap_options = cap_options.copy()
-            cap_options['port_widths'] = {cap_top_layer: cap_port_width}
-
-        bot_w = self.grid.get_track_width(cap_top_layer, cap_port_width, unit_mode=True)
-
-        # get port locations
-        min_len = self.grid.get_min_length(port_layer, port_width, unit_mode=True)
-        via_ext = self.grid.get_via_extensions(cap_top_layer, cap_port_width, port_width,
-                                               unit_mode=True)[1]
-        res_len = top_w
-        port_len = max(top_w, min_len - 2 * via_ext - bot_w - res_len)
-
         # set size
-        cap_width = int(round(cap_width / res))
-        cap_height = int(round(cap_height / res))
-        cap_margin = int(round(cap_margin / res))
-        bnd_box = BBox(0, 0, cap_width, cap_height, res, unit_mode=True)
-        self.set_size_from_bound_box(port_layer, bnd_box, round_up=True,
-                                     half_blk_x=half_blk_x, half_blk_y=half_blk_y)
-        bnd_box = self.bound_box
-        self.array_box = bnd_box
+        io_layer = top_layer + 1
+        bnd_box = BBox(0, 0, width + 2 * margin, height + 2 * margin, res, unit_mode=True)
+        self.set_size_from_bound_box(io_layer, bnd_box, round_up=True, half_blk_x=half_blk_x,
+                                     half_blk_y=half_blk_y)
+        self.array_box = bnd_box = self.bound_box
+
+        # get input/output track location
+        io_horiz = self.grid.get_direction(io_layer) == 'x'
+        mid_coord = bnd_box.yc_unit if io_horiz else bnd_box.xc_unit
+        io_tidx = self.grid.coord_to_nearest_track(io_layer, mid_coord, half_track=True,
+                                                   mode=0, unit_mode=True)
+        if in_tid is None:
+            in_tidx = io_tidx
+            in_tr_w = 2
+        else:
+            in_tidx, in_tr_w = in_tid
+        if out_tid is None:
+            out_tidx = io_tidx
+            out_tr_w = 2
+        else:
+            out_tidx, out_tr_w = out_tid
+        in_tid = TrackID(io_layer, in_tidx, width=in_tr_w)
+        out_tid = TrackID(io_layer, out_tidx, width=out_tr_w)
+
+        # setup capacitor options
+        # get port width dictionary.  Make sure we can via up to top_layer + 1
+        in_w = self.grid.get_track_width(io_layer, in_tr_w, unit_mode=True)
+        out_w = self.grid.get_track_width(io_layer, out_tr_w, unit_mode=True)
+        top_port_tr_w = self.grid.get_min_track_width(top_layer, top_w=max(in_w, out_w),
+                                                      unit_mode=True)
+        top_port_tr_w = max(top_port_tr_w, port_tr_w)
+        port_tr_w_dict = {lay: port_tr_w for lay in range(bot_layer, top_layer + 1)}
+        port_tr_w_dict[top_layer] = top_port_tr_w
+        if options is None:
+            options = dict(port_widths=port_tr_w_dict)
+        else:
+            options = options.copy()
+            options['port_widths'] = port_tr_w_dict
 
         # draw cap
-        cap_width = bnd_box.width_unit - 2 * cap_margin
-        cap_height = bnd_box.height_unit - 2 * cap_margin
-        cap_xl = bnd_box.xc_unit - cap_width // 2
-        cap_yb = bnd_box.yc_unit - cap_height // 2
-        cap_box = BBox(cap_xl, cap_yb, cap_xl + cap_width, cap_yb + cap_height, res, unit_mode=True)
-        num_layer = cap_top_layer - cap_bot_layer + 1
-        cap_ports = self.add_mom_cap(cap_box, cap_bot_layer, num_layer, **cap_options)
+        cap_xl = (bnd_box.width_unit - width) // 2
+        cap_yb = (bnd_box.height_unit - height) // 2
+        cap_box = BBox(cap_xl, cap_yb, cap_xl + width, cap_yb + height, res, unit_mode=True)
+        num_layer = top_layer - bot_layer + 1
+        cap_ports = self.add_mom_cap(cap_box, bot_layer, num_layer, **options)
 
-        cp, cn = cap_ports[cap_top_layer]
-        cp = cp[0]
-        cn = cn[0]
-        idx_default = self.grid.coord_to_nearest_track(port_layer, cp.middle, half_track=True)
-        if port_idx is None:
-            plus_idx = minus_idx = idx_default
-        elif isinstance(port_idx, int):
-            plus_idx = minus_idx = port_idx
-        else:
-            minus_idx, plus_idx = port_idx
-            if minus_idx is None:
-                minus_idx = idx_default
-            if plus_idx is None:
-                plus_idx = idx_default
-        plus_tid = TrackID(port_layer, plus_idx, width=port_width)
-        minus_tid = TrackID(port_layer, minus_idx, width=port_width)
+        # connect input/output, draw metal resistors
+        cout, cin = cap_ports[top_layer]
+        cin = cin[0]
+        cout = cout[0]
+        in_min_len = self.grid.get_min_length(io_layer, in_tr_w, unit_mode=True)
+        res_upper = cin.track_id.get_bounds(self.grid, unit_mode=True)[0]
+        res_lower = res_upper - in_min_len
+        in_lower = res_lower - in_min_len
+        self.connect_to_tracks(cin, in_tid, track_lower=in_lower, unit_mode=True)
+        self.add_res_metal_warr(io_layer, in_tidx, res_lower, res_upper, width=in_tr_w,
+                                unit_mode=True)
+        in_warr = self.add_wires(io_layer, in_tidx, in_lower, res_lower, width=in_tr_w,
+                                 unit_mode=True)
 
-        if cp.track_id.base_index < cn.track_id.base_index:
-            warr0, warr1 = cp, cn
-            name0, name1 = 'plus', 'minus'
-            tid0, tid1 = plus_tid, minus_tid
-        else:
-            warr0, warr1 = cn, cp
-            name0, name1 = 'minus', 'plus'
-            tid0, tid1 = minus_tid, plus_tid
+        out_min_len = self.grid.get_min_length(io_layer, out_tr_w, unit_mode=True)
+        res_lower = cout.track_id.get_bounds(self.grid, unit_mode=True)[1]
+        res_upper = res_lower + out_min_len
+        out_upper = res_upper + out_min_len
+        self.connect_to_tracks(cout, out_tid, track_upper=out_upper, unit_mode=True)
+        self.add_res_metal_warr(io_layer, out_tidx, res_lower, res_upper, width=out_tr_w,
+                                unit_mode=True)
+        out_warr = self.add_wires(io_layer, out_tidx, res_upper, out_upper, width=out_tr_w,
+                                  unit_mode=True)
 
-        warr0 = self.connect_to_tracks(warr0, tid0)
-        warr1 = self.connect_to_tracks(warr1, tid1)
-        res_len *= res
-        port_len *= res
-        self.add_res_metal_warr(port_layer, tid0.base_index, warr0.lower - res_len, warr0.lower,
-                                width=port_width)
-        self.add_res_metal_warr(port_layer, tid1.base_index, warr1.upper, warr1.upper + res_len,
-                                width=port_width)
-        warr0 = self.add_wires(port_layer, tid0.base_index, warr0.lower - res_len - port_len,
-                               warr0.lower - res_len, width=port_width)
-        warr1 = self.add_wires(port_layer, tid1.base_index, warr1.upper + res_len,
-                               warr1.upper + res_len + port_len, width=port_width)
+        self.add_pin('plus', in_warr, show=show_pins)
+        self.add_pin('minus', out_warr, show=show_pins)
 
-        self.add_pin(name0, warr0, show=show_pins)
-        self.add_pin(name1, warr1, show=show_pins)
-
-        res_w = top_w * res * self.grid.layout_unit
-        res_l = res_len * self.grid.layout_unit
+        lay_unit = self.grid.layout_unit
         self._sch_params = dict(
-            w=res_w,
-            l=res_l,
-            layer=port_layer,
+            res_in_info=(io_layer, in_w * res * lay_unit, in_min_len * res * lay_unit),
+            res_out_info=(io_layer, out_w * res * lay_unit, out_min_len * res * lay_unit),
         )
 
 
@@ -206,35 +201,25 @@ class MOMCapChar(SubstrateWrapper):
     def get_params_info(cls):
         # type: () -> Dict[str, str]
         return dict(
-            cap_bot_layer='MOM cap bottom layer.',
-            cap_top_layer='MOM cap top layer.',
-            cap_width='MOM cap width, in layout units.',
-            cap_height='MOM cap height, in layout units.',
+            cap_params='MOM cap parameters.',
             sub_lch='Substrate channel length.',
             sub_w='Substrate width.',
             sub_type='Substrate type.  Either "ptap" or "ntap".',
             threshold='Substrate threshold.',
-            cap_margin='margin between cap and boundary, in layout units.',
-            port_width='port track width, in number of tracks.',
-            port_idx='port track index.  Can be int, two-int tuple, or None.  Defaults to center.',
-            show_pins='True to show pin labels.',
-            cap_options='MOM cap layout options.',
             sub_tr_w='substrate track width in number of tracks.  None for default.',
+            show_pins='True to show pin labels.',
         )
 
     @classmethod
     def get_default_param_values(cls):
         # type: () -> Dict[str, Any]
         return dict(
-            cap_margin=0,
-            port_width=1,
-            port_idx=None,
+            sub_tr_w=1,
             show_pins=True,
-            cap_options=None,
-            sub_tr_w=None,
         )
 
     def draw_layout(self):
+        cap_params = self.params['cap_params'].copy()
         sub_lch = self.params['sub_lch']
         sub_w = self.params['sub_w']
         sub_type = self.params['sub_type']
@@ -242,6 +227,5 @@ class MOMCapChar(SubstrateWrapper):
         sub_tr_w = self.params['sub_tr_w']
         show_pins = self.params['show_pins']
 
-        cap_params = self.params.copy()
         self.draw_layout_helper(MOMCapCore, cap_params, sub_lch, sub_w, sub_tr_w, sub_type,
                                 threshold, show_pins, is_passive=False)

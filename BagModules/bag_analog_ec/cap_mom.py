@@ -25,10 +25,9 @@ class bag_analog_ec__cap_mom(Module):
     def get_params_info(cls):
         # type: () -> Dict[str, str]
         return dict(
-            w='metal resistor width, in meters.',
-            l='metal resistor length, in meters.',
-            layer='metal resistor layer ID.',
-            sub_name='substrate name.  Empty string to disable'
+            res_in_info='input metal resistor information.',
+            res_out_info='output metal resistor information.',
+            sub_name='substrate name.  Empty string to disable.',
         )
 
     @classmethod
@@ -38,9 +37,9 @@ class bag_analog_ec__cap_mom(Module):
             sub_name='VSS',
         )
 
-    def design(self, w, l, layer, sub_name):
-        self.instances['XP'].design(w=w, l=l, layer=layer)
-        self.instances['XN'].design(w=w, l=l, layer=layer)
+    def design(self, res_in_info, res_out_info, sub_name):
+        self.instances['XP'].design(w=res_in_info[1], l=res_in_info[2], layer=res_in_info[0])
+        self.instances['XN'].design(w=res_in_info[1], l=res_in_info[2], layer=res_in_info[0])
 
         if not sub_name:
             # delete substrate pin
