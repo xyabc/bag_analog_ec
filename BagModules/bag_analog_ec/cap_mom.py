@@ -39,7 +39,7 @@ class bag_analog_ec__cap_mom(Module):
 
     def design(self, res_in_info, res_out_info, sub_name):
         self.instances['XP'].design(w=res_in_info[1], l=res_in_info[2], layer=res_in_info[0])
-        self.instances['XN'].design(w=res_in_info[1], l=res_in_info[2], layer=res_in_info[0])
+        self.instances['XN'].design(w=res_out_info[1], l=res_out_info[2], layer=res_out_info[0])
 
         if not sub_name:
             # delete substrate pin
