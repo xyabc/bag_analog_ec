@@ -42,9 +42,6 @@ class bag_analog_ec__nch_stack(Module):
         )
 
     def design(self, w, l, seg, intent, stack):
-        if seg == 1:
-            raise ValueError('Cannot make 1 finger transistor.')
-
         inst_name = 'XN'
 
         # array instances
@@ -54,13 +51,14 @@ class bag_analog_ec__nch_stack(Module):
             self.instances[inst_name].design(w=w, l=l, nf=seg, intent=intent)
         else:
             # add stack transistors
+            suf = '' if seg == 1 else '<%d:0>' % (seg - 1)
             for idx in range(stack):
-                name_list.append('%s%d<%d:0>' % (inst_name, idx, seg - 1))
+                name_list.append('%s%d' % (inst_name, idx) + suf)
                 cur_term = {}
                 if idx != stack - 1:
-                    cur_term['S'] = 'mid%d<%d:0>' % (idx, seg - 1)
+                    cur_term['S'] = ('mid%d' % idx) + suf
                 if idx != 0:
-                    cur_term['D'] = 'mid%d<%d:0>' % (idx - 1, seg - 1)
+                    cur_term['D'] = ('mid%d' % (idx - 1)) + suf
                 term_list.append(cur_term)
 
             self.instances[inst_name].design(w=w, l=l, nf=1, intent=intent)
