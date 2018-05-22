@@ -5,6 +5,8 @@
 
 from typing import TYPE_CHECKING, Dict, Set, Any
 
+import numbers
+
 from bag.util.search import BinaryIterator
 from bag.layout.util import BBox
 from bag.layout.routing.base import TrackID, TrackManager
@@ -616,7 +618,10 @@ class HighPassArrayCore(ResArrayBase):
         hm_vext = self.grid.get_via_extensions(hm_layer, 1, 1, unit_mode=True)[0]
         hm_margin = hm_sp_le + hm_vext
 
-        bias_spx = self.grid.get_space(vm_layer, port_tr_w, unit_mode=True)
+        if isinstance(port_tr_w, numbers.Integral):
+            bias_spx = self.grid.get_space(vm_layer, port_tr_w, unit_mode=True)
+        else:
+            bias_spx = self.grid.get_space(vm_layer, port_tr_w[vm_layer], unit_mode=True)
 
         # get capacitor X interval, connect resistors, and get ports
         out_list = []
