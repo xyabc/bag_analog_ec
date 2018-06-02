@@ -219,12 +219,8 @@ class HighPassDiffCore(ResArrayBase):
                 biasp.append(cpl[1 - conn_par])
                 biasn.append(cpr[1 - conn_par])
             if idx == nser + ndum - 1:
-                if idx == ndum:
-                    outp = cpl[conn_par]
-                    outn = cpr[conn_par]
-                else:
-                    outp = cpl[1 - conn_par]
-                    outn = cpr[1 - conn_par]
+                outp = cpl[conn_par]
+                outn = cpr[conn_par]
             else:
                 npl = self.get_res_ports(0, idx + 1)
                 npr = self.get_res_ports(0, nx - 2 - idx)

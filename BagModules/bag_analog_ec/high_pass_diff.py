@@ -77,8 +77,8 @@ class bag_analog_ec__high_pass_diff(Module):
                 self.reconnect_instance_terminal('RDUMN', 'BULK', sub_name)
 
         # design main resistors
-        for inst_name, in_name, out_name, mid_name in (('RP', 'rp', 'biasp', 'midp'),
-                                                       ('RN', 'rn', 'biasn', 'midn')):
+        for inst_name, in_name, out_name, mid_name in (('RP', 'xp', 'biasp', 'midp'),
+                                                       ('RN', 'xn', 'biasn', 'midn')):
             self.instances[inst_name].design(w=w, l=l, intent=intent)
             if nser == 1:
                 if sub_name and sub_name != 'VSS':
