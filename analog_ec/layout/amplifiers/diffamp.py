@@ -237,7 +237,8 @@ class DiffAmpSelfBiased(AnalogBase):
                                      out_tid, min_len_mode=0)
 
         # fill dummies
-        vss_warrs, vdd_warrs = self.fill_dummy()
+        tr_w = tr_manager.get_width(hm_layer, 'sup')
+        vss_warrs, vdd_warrs = self.fill_dummy(vdd_width=tr_w, vss_width=tr_w)
 
         # add pins
         self.add_pin('inp', inp, show=show_pins)

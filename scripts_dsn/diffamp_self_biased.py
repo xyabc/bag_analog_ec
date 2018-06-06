@@ -89,7 +89,7 @@ def design_amp(dsn_specs):
 
 
 def run_main():
-    spec_file = 'specs_dsn_sample/diffamp_self_biased.yaml'
+    spec_file = 'specs_design/diffamp_self_biased.yaml'
 
     with open(spec_file, 'r') as f:
         dsn_specs = yaml.load(f)
